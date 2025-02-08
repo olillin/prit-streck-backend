@@ -1,5 +1,6 @@
 import express from 'express'
 import { getCurrentPritIconUrl } from './gamma'
+import createApiRouter from './api'
 
 const { API_AUTHORIZATION } = process.env
 if (!API_AUTHORIZATION) {
@@ -16,6 +17,9 @@ app.get('/prit-icon', async (req, res) => {
         })
         .catch(reason => res.status(500).end(`Failed to get icon: ${reason}`))
 })
+
+const api = createApiRouter()
+app.use('/api', api)
 
 const PORT = parseInt(process.env.PORT ?? '8080')
 app.listen(PORT)
