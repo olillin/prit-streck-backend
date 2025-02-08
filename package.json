@@ -1,0 +1,29 @@
+{
+  "name": "prit-streck-backend",
+  "version": "1.0.0",
+  "description": "Backend till strecklista för P.R.I.T.",
+  "main": "out/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "cd out && node server.js",
+    "startenv": "cd out && node --env-file=../.env server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olillin/prit-streck-backend.git"
+  },
+  "author": "olillin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/olillin/prit-streck-backend/issues"
+  },
+  "homepage": "https://github.com/olillin/prit-streck-backend#readme",
+  "dependencies": {
+    "express": "^4.21.2",
+    "typescript": "^5.7.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}
