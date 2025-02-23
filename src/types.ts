@@ -1,48 +1,96 @@
-interface ApiResponse {
-    data?: ApiResponseData
-    error?: ApiError
+import { GroupId, UserId } from 'gammait'
+import { JwtPayload } from 'jsonwebtoken'
+
+// #region Basic types
+export interface Group {
+    id: GroupId
+
+    prettyName: string
+    avatarUrl: string
 }
 
-interface ApiResponseData {}
+export interface User {
+    id: UserId
 
-interface ApiError {
+    firstName: string
+    lastName: string
+    nick: string
+    avatarUrl: string
+
+    balance: number
+}
+
+export interface Item {
+    id: number
+    addedTime: number
+    icon?: string
+    displayName: string
+    prices: Price[]
+    timesPurchased: number
+    visible: boolean
+}
+
+export interface Price {
+    price: number
+    displayName?: string
+}
+
+export interface Purchase {
+    id: number
+    purchasedBy: UserId
+    purchasedFor: UserId
+    purchasedDate: number
+    items: PurchasedItem[]
+}
+
+export interface PurchasedItem {
+    id: number
+    quantity: number
+    purchasePrice: number
+}
+// #endregion Basic types
+
+// #region Response types
+export interface ResponseBody {
+    data?: ResponseData
+    error?: ResponseError
+}
+
+export interface ResponseData {}
+
+export interface ResponseError {
+    code: number
     message: string
 }
 
-interface ProfileResponse extends ApiResponseData {
-    
+export interface UserResponse extends User, ResponseData {
+    group: Group
 }
 
-type Id = number
-
-interface Profile {
-    id: Id
-    nick: string
+export interface GroupResponse extends Group, ResponseData {
+    members: User[]
 }
 
-interface ProfileSetup extends Partial<Profile> {
-    nick: string
+export interface JWT {
+    token: string
+    expireMinutes: number
 }
 
-interface Product {
-    id: Id
-    added_time: number
-    icon: string
-    display_name: string
-    price: number
-    times_purchased: number
-    archived: boolean
+export interface LocalJwt extends JwtPayload {
+    userId: UserId
+    groupId: GroupId
 }
 
-interface ProductSetup extends Partial<Product> {
-    display_name: string
-    price: number
-    icon?: string
+export interface LoginResponse {
+    token: JWT
+    user: UserResponse
 }
 
-interface Purchase {
-    id: Id
-    count: number
+export interface ItemsResponse {
+    items: Item[]
 }
 
-type PurchaseSetup = Purchase
+export interface ItemResponse {
+    item: Item
+}
+// #endregion Response types

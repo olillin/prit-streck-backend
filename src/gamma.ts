@@ -1,4 +1,4 @@
-import { Cached } from './cache'
+import { CachedValue } from './cache'
 
 interface SuperGroup {
     id: string
@@ -16,7 +16,7 @@ interface Group {
     superGroup: SuperGroup
 }
 
-var cachedUrl: Cached<string> | undefined = undefined
+var cachedUrl: CachedValue<string> | undefined = undefined
 
 export function getCurrentPritIconUrl(authorization: string): Promise<string> {
     return new Promise(async (resolve, reject) => {
@@ -48,7 +48,7 @@ export function getCurrentPritIconUrl(authorization: string): Promise<string> {
 
                         if (!postResolve) resolve(url)
 
-                        cachedUrl = new Cached(url)
+                        cachedUrl = new CachedValue(url)
                         return
                     }
                 })
