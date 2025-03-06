@@ -32,6 +32,11 @@ function validateToken(req: Request, res: Response, next: NextFunction) {
             }
         }
 
+        if (!verifiedToken.userId || !verifiedToken.groupId) {
+            sendError(res, errors.invalidToken)
+            return
+        }
+
         console.log('Verified token:')
         console.log(verifiedToken)
 
@@ -53,6 +58,8 @@ export function verifyToken(token: string): LocalJwt {
 
 export function getUserId(res: Response): UserId {
     const jwt: LocalJwt = res.locals.jwt
+    console.log('JWT:')
+    console.log(jwt)
     return jwt.userId
 }
 

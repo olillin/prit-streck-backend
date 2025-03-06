@@ -119,11 +119,6 @@ export interface TransactionsResponse extends PaginatedResponse {
 // #endregion Response types
 
 // #region Request types
-export interface GetPurchaseBody {
-    limit: number
-    offset: number
-}
-
 export interface PostPurchaseBody {
     userId: UserId
     items: Array<PurchasedItem>
@@ -132,11 +127,6 @@ export interface PostPurchaseBody {
 export interface PostDepositBody {
     userId: UserId
     total: number
-}
-
-export interface GetItemsBody {
-    sort: ItemSortMode
-    visibleOnly: boolean
 }
 
 export interface PostItemBody {

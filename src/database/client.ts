@@ -48,8 +48,8 @@ class DatabaseClient extends Client {
     }
 
     // Users
-    async createUser(userId: UserId, groupId: GroupId): Promise<tableType.Users> {
-        return (await this.fetchFirst(q.CREATE_USER, userId, groupId))!
+    async createUser(userId: UserId): Promise<tableType.Users> {
+        return (await this.fetchFirst(q.CREATE_USER, userId))!
     }
 
     async getUser(userId: UserId): Promise<tableType.Users | undefined> {
@@ -138,8 +138,12 @@ class DatabaseClient extends Client {
         return await this.fetchFirst(q.GET_TRANSACTION, transactionId)
     }
 
-    async getTransactionsInGroup(groupId: GroupId): Promise<tableType.Transactions[] | undefined> {
-        return await this.fetchRows(q.GET_TRANSACTIONS_IN_GROUP, groupId)
+    async countTransactionsInGroup(groupId: GroupId): Promise<number> {
+        return parseInt((await this.fetchFirst<tableType.Count>(q.COUNT_TRANSACTIONS_IN_GROUP, groupId))!.count)
+    }
+
+    async getTransactionsInGroup(groupId: GroupId, limit: number, offset: number): Promise<tableType.Transactions[] | undefined> {
+        return await this.fetchRows(q.GET_TRANSACTIONS_IN_GROUP, groupId, limit, offset)
     }
 
     async deleteTransaction(transactionId: number): Promise<void> {
@@ -155,9 +159,9 @@ class DatabaseClient extends Client {
         return (await this.fetchFirst(q.GET_DEPOSIT, transactionId))!
     }
 
-    // async deleteDeposit(transactionId: number): Promise<void> {
-    //     await this.fetch(q.DELETE_DEPOSIT, transactionId)
-    // }
+    async deleteDeposit(transactionId: number): Promise<void> {
+        await this.fetch(q.DELETE_DEPOSIT, transactionId)
+    }
 
     // Purchased items
     async addPurchasedItem(purchaseId: number, itemId: number, quantity: number, purchasePrice: number): Promise<tableType.PurchasedItems> {

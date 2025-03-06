@@ -55,3 +55,7 @@ export interface FavoriteItems extends QueryResultRow {
 export interface Exists extends QueryResultRow {
     exists: boolean
 }
+
+export interface Count extends QueryResultRow {
+    count: string
+}

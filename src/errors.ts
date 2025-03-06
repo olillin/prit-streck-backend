@@ -8,6 +8,7 @@ export const errors = {
     invalidProperty: (name: string) => [400, `Property '${name}' is invalid`] as const,
     unauthorized: [401, 'Unauthorized'],
     expiredToken: [401, 'Token has expired'],
+    invalidToken: [401, 'Token is invalid, generate a new one'],
     nbf: [401, 'Token has expired'],
 
     noPermission: [403, 'No permission to access this service'],

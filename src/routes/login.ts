@@ -6,6 +6,7 @@ import env from '../config/env'
 import { errors, sendError } from '../errors'
 import { JWT, LoginResponse, ResponseBody } from '../types'
 import * as convert from '../util/convert'
+import { getAuthorizedGroup } from '../util/getter'
 
 interface LoggedInUser {
     userId: UserId
@@ -61,7 +62,7 @@ export function login(): (req: Request, res: Response) => void {
         const userInfo = await authorizationCode.userInfo()
         const id: UserId = userInfo.sub
         const groups = await clientApi.getGroupsFor(id)
-        const group = groups.find(group => group.superGroup.id == env.SUPER_GROUP_ID)
+        const group = getAuthorizedGroup(groups)
         if (!group) {
             // User is not in the super group
             sendError(res, errors.noPermission)
@@ -74,7 +75,7 @@ export function login(): (req: Request, res: Response) => void {
             if (!groupExists) {
                 await db.createGroup(group.id)
             }
-            await db.createUser(id, group.id)
+            await db.createUser(id)
         }
         const dbUser = (await db.getUser(id))!
 

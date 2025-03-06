@@ -4,7 +4,7 @@ import { clientApi, database } from '../config/clients'
 import * as tableType from '../database/types'
 import { errors, sendError } from '../errors'
 import { getGroupId, getUserId } from '../middleware/validateToken'
-import { Deposit, GetPurchaseBody, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, TransactionResponse, UserResponse } from '../types'
+import { Deposit, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, TransactionResponse, UserResponse } from '../types'
 import * as convert from '../util/convert'
 import * as getter from '../util/getter'
 import { getAuthorizedGroup } from '../util/getter'
@@ -13,6 +13,7 @@ export async function getUser(req: Request, res: Response) {
     const db = await database()
 
     const userId: UserId = getUserId(res)
+    console.log(`Getting user info for: ${userId}`)
 
     // Get requests
     const dbUserPromise = db.getUser(userId).catch(reason => {
@@ -65,7 +66,14 @@ export async function getUser(req: Request, res: Response) {
 
 export async function getTransactions(req: Request, res: Response) {
     const db = await database()
-    const { limit, offset } = req.body as GetPurchaseBody
+    const limit = parseInt(req.query.limit as string)
+    const offset = parseInt(req.query.offset as string)
+
+    const groupId: GroupId = getGroupId(res)
+
+    const count = await db.countTransactionsInGroup(groupId)
+
+    res.json({ limit, offset, count })
 
     // TODO: Get paginated purchases
 }
@@ -141,8 +149,8 @@ export async function postDeposit(req: Request, res: Response) {
 
 export async function getItems(req: Request, res: Response) {
     const db = await database()
-    const sort: ItemSortMode = req.body.sort
-    const visibleOnly: boolean = req.body.visibleOnly
+    const sort: ItemSortMode = req.params.sort as ItemSortMode
+    const visibleOnly: boolean = !!req.params.visibleOnly
 
     const userId: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)

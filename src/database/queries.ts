@@ -25,6 +25,7 @@ export const REMOVE_PRICES_FOR_ITEM = 'DELETE FROM prices WHERE itemId = $1'
 
 export const CREATE_TRANSACTION = 'INSERT INTO transactions(groupId, purchasedBy, purchasedFor) VALUES ($1, $2, $3) RETURNING *'
 export const GET_TRANSACTION = 'SELECT * FROM transactions WHERE Id = $1'
+export const COUNT_TRANSACTIONS_IN_GROUP = 'SELECT COUNT(*) FROM transactions WHERE groupId = $1'
 export const GET_TRANSACTIONS_IN_GROUP = 'SELECT * FROM transactions WHERE groupId = $1'
 export const DELETE_TRANSACTION = 'DELETE FROM transactions WHERE Id = $1'
 
