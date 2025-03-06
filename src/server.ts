@@ -25,6 +25,7 @@ async function main() {
 
     app.post('/login', loginRoute())
 
+    app.use(express.json())
     const api = await createApiRouter()
     app.use('/api', api)
 

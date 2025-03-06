@@ -44,7 +44,7 @@ class DatabaseClient extends Client {
     }
 
     async groupExists(groupId: GroupId): Promise<boolean> {
-        return (await this.fetchFirst<tableType.Exists>(q.GROUP_EXISTS, groupId))!.exists
+        return !!(await this.fetchFirst<tableType.Exists>(q.GROUP_EXISTS, groupId))!.exists
     }
 
     // Users
@@ -65,7 +65,7 @@ class DatabaseClient extends Client {
     }
 
     async userExists(userId: UserId): Promise<boolean> {
-        return (await this.fetchFirst<tableType.Exists>(q.USER_EXISTS, userId))!.exists
+        return !!(await this.fetchFirst<tableType.Exists>(q.USER_EXISTS, userId))!.exists
     }
 
     // Items
@@ -101,15 +101,15 @@ class DatabaseClient extends Client {
     }
 
     async itemExists(itemId: number): Promise<boolean> {
-        return (await this.fetchFirst<tableType.Exists>(q.ITEM_EXISTS, itemId))!.exists
+        return !!(await this.fetchFirst<tableType.Exists>(q.ITEM_EXISTS, itemId))!.exists
     }
 
     async itemExistsInGroup(itemId: number, groupId: GroupId): Promise<boolean> {
-        return (await this.fetchFirst<tableType.Exists>(q.ITEM_EXISTS_IN_GROUP, itemId, groupId))!.exists
+        return !!(await this.fetchFirst<tableType.Exists>(q.ITEM_EXISTS_IN_GROUP, itemId, groupId))!.exists
     }
 
     async itemNameExistsInGroup(name: string, groupId: GroupId): Promise<boolean> {
-        return (await this.fetchFirst<tableType.Exists>(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId))!.exists
+        return !!(await this.fetchFirst<tableType.Exists>(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId))!.exists
     }
 
     async deleteItem(itemId: number): Promise<void> {
@@ -117,8 +117,8 @@ class DatabaseClient extends Client {
     }
 
     // Prices
-    async addPrice(itemId: number, price: number, displayName: string) {
-        return await this.fetchFirst(q.CREATE_PRICE, itemId, price, displayName)
+    async addPrice(itemId: number, price: number, displayName: string): Promise<tableType.Prices> {
+        return (await this.fetchFirst(q.CREATE_PRICE, itemId, price, displayName))!
     }
 
     async getPricesForItem(itemId: number): Promise<tableType.Prices[]> {
@@ -173,7 +173,7 @@ class DatabaseClient extends Client {
     }
 
     async hasBeenPurchased(itemId: number): Promise<boolean> {
-        return (await this.fetchFirst<tableType.Exists>(q.HAS_BEEN_PURCHASED, itemId))!.exists
+        return !!(await this.fetchFirst<tableType.Exists>(q.HAS_BEEN_PURCHASED, itemId))!.exists
     }
 
     // Favorites
@@ -188,7 +188,7 @@ class DatabaseClient extends Client {
     }
 
     async isFavorite(userId: UserId, itemId: number): Promise<boolean> {
-        return (await this.fetchFirst<tableType.Exists>(q.FAVORITE_ITEM_EXISTS, userId, itemId))!.exists
+        return !!(await this.fetchFirst<tableType.Exists>(q.FAVORITE_ITEM_EXISTS, userId, itemId))!.exists
     }
     // #endregion Queries
 }

@@ -189,12 +189,23 @@ export async function getItems(req: Request, res: Response) {
 export async function postItem(req: Request, res: Response) {
     const { displayName, prices, icon } = req.body as PostItemBody
     const db = await database()
-    const groupId = getGroupId(res)
-    if (icon) {
-        await db.createItem(groupId, displayName, icon)
-    } else {
-        await db.createItem(groupId, displayName)
-    }
+    const userId: UserId = getUserId(res)
+    const groupId: GroupId = getGroupId(res)
+
+    // Create item
+    const dbItem = icon
+        ? await db.createItem(groupId, displayName, icon) //
+        : await db.createItem(groupId, displayName)
+
+    // Create prices
+    const dbPrices = await Promise.all(prices.map(price => db.addPrice(dbItem.id, price.price, price.displayName)))
+
+    // Create
+    const favorite = await db.isFavorite(userId, dbItem.id)
+
+    const item = convert.toItem(dbItem, dbPrices, favorite)
+    const body: ResponseBody<ItemResponse> = { data: { item } }
+    res.json(body)
 }
 
 export async function getItem(req: Request, res: Response) {

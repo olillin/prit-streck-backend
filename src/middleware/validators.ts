@@ -27,7 +27,9 @@ export async function checkItemExists(value: string, meta: Meta): Promise<boolea
 export async function checkDisplayNameUnique(value: string, meta: Meta): Promise<void> {
     const db = await database()
     const groupId = getGroupId(meta)
-    if (await db.itemNameExistsInGroup(value, groupId)) {
+    const nameExists = await db.itemNameExistsInGroup(value, groupId)
+    console.log(`Item name "${value}" exists: ${nameExists}`)
+    if (nameExists) {
         throw new Error(errors.displayNameNotUnique[1])
     }
 }
@@ -69,10 +71,10 @@ export const getItems = () => [
 ]
 
 export const postItem = () => [
-    body('displayName').isString().trim().notEmpty().bail().escape().custom(checkDisplayNameUnique),
+    body('displayName').isString().bail().trim().notEmpty().bail().escape().custom(checkDisplayNameUnique),
     body('prices').isArray(),
     body('prices.*.price').isDecimal(),
-    body('prices.*.displayName').optional().isString().trim().notEmpty().escape(),
+    body('prices.*.displayName').isString().bail().trim().notEmpty().escape(),
     body('icon').optional().isURL(),
     //
 ]
