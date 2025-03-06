@@ -75,22 +75,25 @@ export async function getTransactions(req: Request, res: Response) {
 
     const dbTransactions = await db.getTransactionsInGroup(groupId)
 
-    const transactions: Transaction<any>[] = await Promise.all(
-        dbTransactions.map(async dbTransaction => {
-            const dbPurchasedItems = await db.getPurchasedItems(dbTransaction.id)
-            if (dbPurchasedItems.length > 0) {
-                // Transaction is purchase
-                return convert.toPurchase(dbTransaction, dbPurchasedItems)
-            }
-            const dbDeposit = await db.getDeposit(dbTransaction.id)
-            if (dbDeposit) {
-                // Transaction is deposit
-                return convert.toDeposit(dbTransaction, dbDeposit)
-            }
+    const transactions: Transaction<any>[] = (
+        await Promise.all(
+            dbTransactions.map(async dbTransaction => {
+                const dbPurchasedItems = await db.getPurchasedItems(dbTransaction.id)
+                if (dbPurchasedItems.length > 0) {
+                    // Transaction is purchase
+                    return convert.toPurchase(dbTransaction, dbPurchasedItems)
+                }
+                const dbDeposit = await db.getDeposit(dbTransaction.id)
+                if (dbDeposit) {
+                    // Transaction is deposit
+                    return convert.toDeposit(dbTransaction, dbDeposit)
+                }
 
-            throw new Error('Invalid transaction, has no purchased items or deposit')
-        })
-    )
+                console.warn(`Transaction ${dbTransaction.id} has no purchased items or deposit`)
+                return undefined
+            })
+        )
+    ).filter(x => x !== undefined)
 
     const body: ResponseBody<TransactionsResponse> = { data: { transactions } }
     res.json(body)
