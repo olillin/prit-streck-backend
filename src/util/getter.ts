@@ -27,7 +27,8 @@ export async function deposit(depositId: number): Promise<Deposit> {
     const db = await database()
     const [transaction, deposit] = await Promise.all([db.getTransaction(depositId), db.getDeposit(depositId)])
 
-    if (!transaction) throw new Error('Deposit does not exist')
+    if (!transaction) throw new Error('Deposit transaction does not exist')
+    if (!deposit) throw new Error('Deposit does not exist')
 
     return toDeposit(transaction, deposit)
 }

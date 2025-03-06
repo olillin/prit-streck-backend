@@ -3,7 +3,7 @@ import { GroupId, UserId } from 'gammait'
 import { database } from '../config/clients'
 import { errors } from '../errors'
 import { verifyToken } from './validateToken'
-import { ItemSortMode } from '../types'
+import * as getter from '../util/getter'
 
 export async function checkUserExists(value: string): Promise<boolean> {
     const db = await database()
@@ -22,6 +22,13 @@ export async function checkItemExists(value: string, meta: Meta): Promise<boolea
     const db = await database()
     const groupId = getGroupId(meta)
     return await db.itemExistsInGroup(parseInt(value), groupId)
+}
+
+export async function checkItemVisible(value: string, meta: Meta): Promise<boolean> {
+    const db = await database()
+    const itemId: number = parseInt(value)
+    const item = (await db.getItem(itemId))!
+    return item.visible
 }
 
 export async function checkDisplayNameUnique(value: string, meta: Meta): Promise<void> {
@@ -50,10 +57,12 @@ export const getTransactions = () => [
 
 export const postPurchase = () => [
     body('userId').isString().trim().isUUID().bail().custom(checkUserExists),
-    body('items').isArray(),
-    body('items.*.id').isInt(),
-    body('items.*.count').isInt(),
-    body('items.*.purchasePrice').isDecimal(),
+    body('items').isArray({ min: 1 }),
+    body('items.*.id').isInt().bail().custom(checkItemExists).bail().custom(checkItemVisible),
+    body('items.*.quantity').isInt({ min: 1 }),
+    body('items.*.purchasePrice').isObject(),
+    body('items.*.purchasePrice.price').isDecimal(),
+    body('items.*.purchasePrice.displayName').isString().bail().trim().notEmpty().escape(),
     //
 ]
 

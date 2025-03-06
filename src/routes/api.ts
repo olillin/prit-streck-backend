@@ -4,7 +4,7 @@ import { clientApi, database } from '../config/clients'
 import * as tableType from '../database/types'
 import { errors, sendError } from '../errors'
 import { getGroupId, getUserId } from '../middleware/validateToken'
-import { Deposit, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, TransactionResponse, UserResponse } from '../types'
+import { Deposit, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, Transaction, TransactionResponse, TransactionsResponse, UserResponse } from '../types'
 import * as convert from '../util/convert'
 import * as getter from '../util/getter'
 import { getAuthorizedGroup } from '../util/getter'
@@ -73,9 +73,29 @@ export async function getTransactions(req: Request, res: Response) {
 
     const count = await db.countTransactionsInGroup(groupId)
 
-    res.json({ limit, offset, count })
+    const dbTransactions = await db.getTransactionsInGroup(groupId)
 
-    // TODO: Get paginated purchases
+    const transactions: Transaction<any>[] = await Promise.all(
+        dbTransactions.map(async dbTransaction => {
+            const dbPurchasedItems = await db.getPurchasedItems(dbTransaction.id)
+            if (dbPurchasedItems.length > 0) {
+                // Transaction is purchase
+                return convert.toPurchase(dbTransaction, dbPurchasedItems)
+            }
+            const dbDeposit = await db.getDeposit(dbTransaction.id)
+            if (dbDeposit) {
+                // Transaction is deposit
+                return convert.toDeposit(dbTransaction, dbDeposit)
+            }
+
+            throw new Error('Invalid transaction, has no purchased items or deposit')
+        })
+    )
+
+    const body: ResponseBody<TransactionsResponse> = { data: { transactions } }
+    res.json(body)
+
+    // TODO: Paginate transactions
 }
 
 export async function postPurchase(req: Request, res: Response) {
@@ -98,14 +118,18 @@ export async function postPurchase(req: Request, res: Response) {
     }
 
     // Add purchase items
-    const itemPromises = items.map(item =>
-        db.addPurchasedItem(
+    const itemPromises = items.map(async item => {
+        const dbItem = await getter.item(item.id, purchasedBy)
+
+        return db.addPurchasedItem(
             dbTransaction.id, //
-            item.id,
             item.quantity,
-            item.purchasePrice
+            item.purchasePrice,
+            dbItem.id,
+            dbItem.displayName,
+            dbItem.icon
         )
-    )
+    })
     await Promise.all(itemPromises)
 
     const transaction: Purchase = await getter.purchase(dbTransaction.id)
@@ -296,4 +320,9 @@ export async function patchItem(req: Request, res: Response) {
 
 export async function deleteItem(req: Request, res: Response) {
     const db = await database()
+
+    const itemId = parseInt(req.params.id)
+
+    await db.deleteItem(itemId)
+    res.end()
 }

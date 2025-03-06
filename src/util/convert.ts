@@ -1,4 +1,4 @@
-import { Deposit, Group, JWT, LoginResponse, Purchase, Transaction, TransactionType, UserResponse } from '../types'
+import { Deposit, Group, JWT, LoginResponse, Purchase, PurchasedItem, Transaction, TransactionType, UserResponse } from '../types'
 import * as tableType from '../database/types'
 import * as gamma from 'gammait'
 import { groupAvatarUrl, userAvatarUrl } from 'gammait/urls'
@@ -76,13 +76,24 @@ export function toTransaction<T extends TransactionType>(dbTransaction: tableTyp
     }
 }
 
+export function toPurchasedItem(dbPurchasedItem: tableType.PurchasedItems): PurchasedItem {
+    return {
+        item: {
+            id: dbPurchasedItem.itemid,
+            displayName: dbPurchasedItem.displayname,
+            ...(!!dbPurchasedItem.iconurl && { icon: dbPurchasedItem.iconurl }),
+        },
+        quantity: dbPurchasedItem.quantity,
+        purchasePrice: {
+            price: dbPurchasedItem.purchaseprice,
+            displayName: dbPurchasedItem.purchasepricename,
+        },
+    }
+}
+
 export function toPurchase(dbTransaction: tableType.Transactions, dbPurchasedItems: tableType.PurchasedItems[]): Purchase {
     return {
-        items: dbPurchasedItems.map(item => ({
-            id: item.itemid,
-            purchasePrice: item.purchaseprice,
-            quantity: item.quantity,
-        })),
+        items: dbPurchasedItems.map(toPurchasedItem),
         ...toTransaction(dbTransaction, 'purchase'),
     }
 }

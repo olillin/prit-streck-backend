@@ -21,7 +21,8 @@ export const errors = {
 
     // Purchase
     itemCount: [400, 'Item count must be greater than 0'],
-    purchaseInvisible: [403, 'Cannot purchase an invisible product'],
+    purchaseNothing: [400, 'Must purchase at least one item'],
+    purchaseInvisible: [403, 'Cannot purchase a non-visible item'],
     userNotExist: [404, 'User does not exist'],
     itemNotExist: [404, 'Item does not exist'],
 

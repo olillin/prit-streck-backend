@@ -2,6 +2,7 @@ import { GroupId, UserId } from 'gammait'
 import { Client, QueryResult, QueryResultRow } from 'pg'
 import * as q from './queries'
 import * as tableType from './types'
+import { Price } from '../types'
 
 class ValidationError extends Error {}
 
@@ -69,8 +70,6 @@ class DatabaseClient extends Client {
     }
 
     // Items
-    async createItem(groupId: GroupId, displayName: string): Promise<tableType.Items>
-    async createItem(groupId: GroupId, displayName: string, iconUrl: string): Promise<tableType.Items>
     async createItem(groupId: GroupId, displayName: string, iconUrl?: string): Promise<tableType.Items> {
         if (iconUrl) {
             return (await this.fetchFirst(q.CREATE_ITEM_WITH_ICON, groupId, displayName, iconUrl))!
@@ -142,8 +141,8 @@ class DatabaseClient extends Client {
         return parseInt((await this.fetchFirst<tableType.Count>(q.COUNT_TRANSACTIONS_IN_GROUP, groupId))!.count)
     }
 
-    async getTransactionsInGroup(groupId: GroupId, limit: number, offset: number): Promise<tableType.Transactions[] | undefined> {
-        return await this.fetchRows(q.GET_TRANSACTIONS_IN_GROUP, groupId, limit, offset)
+    async getTransactionsInGroup(groupId: GroupId): Promise<tableType.Transactions[]> {
+        return await this.fetchRows(q.GET_TRANSACTIONS_IN_GROUP, groupId)
     }
 
     async deleteTransaction(transactionId: number): Promise<void> {
@@ -155,8 +154,8 @@ class DatabaseClient extends Client {
         return (await this.fetchFirst(q.CREATE_DEPOSIT, transactionId, total))!
     }
 
-    async getDeposit(transactionId: number): Promise<tableType.Deposits> {
-        return (await this.fetchFirst(q.GET_DEPOSIT, transactionId))!
+    async getDeposit(transactionId: number): Promise<tableType.Deposits | undefined> {
+        return await this.fetchFirst(q.GET_DEPOSIT, transactionId)
     }
 
     async deleteDeposit(transactionId: number): Promise<void> {
@@ -164,8 +163,29 @@ class DatabaseClient extends Client {
     }
 
     // Purchased items
-    async addPurchasedItem(purchaseId: number, itemId: number, quantity: number, purchasePrice: number): Promise<tableType.PurchasedItems> {
-        return (await this.fetchFirst(q.ADD_PURCHASED_ITEM, purchaseId, itemId, quantity, purchasePrice))!
+    async addPurchasedItem(purchaseId: number, quantity: number, purchasePrice: Price, itemId: number, displayName: string, iconUrl?: string): Promise<tableType.PurchasedItems> {
+        if (iconUrl) {
+            return (await this.fetchFirst(
+                q.ADD_PURCHASED_ITEM_WITH_ICON, //
+                purchaseId,
+                quantity,
+                purchasePrice.price,
+                purchasePrice.displayName,
+                itemId,
+                displayName,
+                iconUrl
+            ))!
+        } else {
+            return (await this.fetchFirst(
+                q.ADD_PURCHASED_ITEM, //
+                purchaseId,
+                quantity,
+                purchasePrice.price,
+                purchasePrice.displayName,
+                itemId,
+                displayName
+            ))!
+        }
     }
 
     async getPurchasedItems(purchaseId: number): Promise<tableType.PurchasedItems[]> {

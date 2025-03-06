@@ -33,8 +33,8 @@ CREATE TABLE Prices (
 CREATE TABLE Transactions (
     Id SERIAL UNIQUE NOT NULL,
     GroupId VARCHAR(255) NOT NULL,
-    CreatedBy VARCHAR(255) UNIQUE NOT NULL,
-    CreatedFor VARCHAR(255) UNIQUE NOT NULL,
+    CreatedBy VARCHAR(255) NOT NULL,
+    CreatedFor VARCHAR(255) NOT NULL,
     CreatedTime TIMESTAMP NOT NULL DEFAULT NOW(),
     PRIMARY KEY (Id),
     FOREIGN KEY (CreatedBy) REFERENCES Users(GammaId),
@@ -44,9 +44,12 @@ CREATE TABLE Transactions (
 
 CREATE TABLE PurchasedItems (
     TransactionId SERIAL NOT NULL,
-    ItemId SERIAL NOT NULL,
     Quantity INT NOT NULL,
     PurchasePrice FLOAT NOT NULL,
+    PurchasePriceName VARCHAR(32) NOT NULL,
+    ItemId SERIAL NOT NULL,
+    DisplayName VARCHAR(32) NOT NULL,
+    IconUrl VARCHAR(255),
     FOREIGN KEY (TransactionId) REFERENCES Transactions(Id),
     FOREIGN KEY (ItemId) REFERENCES Items(Id)
 );

@@ -52,9 +52,13 @@ export interface Purchase extends Transaction<'purchase'> {
 }
 
 export interface PurchasedItem {
-    id: number
+    item: {
+        id: number
+        displayName: string
+        icon?: string
+    }
     quantity: number
-    purchasePrice: number
+    purchasePrice: Price
 }
 
 export interface Deposit extends Transaction<'deposit'> {
@@ -121,7 +125,11 @@ export interface TransactionsResponse extends PaginatedResponse {
 // #region Request types
 export interface PostPurchaseBody {
     userId: UserId
-    items: Array<PurchasedItem>
+    items: Array<{
+        id: number
+        quantity: number
+        purchasePrice: Price
+    }>
 }
 
 export interface PostDepositBody {

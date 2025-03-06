@@ -15,7 +15,7 @@ export interface Items extends QueryResultRow {
     id: number
     groupid: GroupId
     displayname: string
-    iconurl?: string
+    iconurl: string | null
     addedtime: Date
     timespurchased: number
     visible: boolean
@@ -37,9 +37,14 @@ export interface Transactions extends QueryResultRow {
 
 export interface PurchasedItems extends QueryResultRow {
     purchaseid: number
-    itemid: number
+
     quantity: number
     purchaseprice: number
+    purchasepricename: string
+
+    itemid: number
+    displayname: string
+    icon: string | null
 }
 
 export interface Deposits extends QueryResultRow {

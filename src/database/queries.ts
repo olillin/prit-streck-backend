@@ -23,18 +23,19 @@ export const CREATE_PRICE = 'INSERT INTO prices(itemId, price, displayName) VALU
 export const GET_PRICES_FOR_ITEM = 'SELECT * FROM prices WHERE itemId = $1 ORDER BY price ASC'
 export const REMOVE_PRICES_FOR_ITEM = 'DELETE FROM prices WHERE itemId = $1'
 
-export const CREATE_TRANSACTION = 'INSERT INTO transactions(groupId, purchasedBy, purchasedFor) VALUES ($1, $2, $3) RETURNING *'
+export const CREATE_TRANSACTION = 'INSERT INTO transactions(groupId, createdBy, createdFor) VALUES ($1, $2, $3) RETURNING *'
 export const GET_TRANSACTION = 'SELECT * FROM transactions WHERE Id = $1'
 export const COUNT_TRANSACTIONS_IN_GROUP = 'SELECT COUNT(*) FROM transactions WHERE groupId = $1'
-export const GET_TRANSACTIONS_IN_GROUP = 'SELECT * FROM transactions WHERE groupId = $1'
+export const GET_TRANSACTIONS_IN_GROUP = 'SELECT * FROM transactions WHERE groupId = $1 ORDER BY createdTime DESC'
 export const DELETE_TRANSACTION = 'DELETE FROM transactions WHERE Id = $1'
 
 export const CREATE_DEPOSIT = 'INSERT INTO deposits(transactionId, total) VALUES ($1, $2) RETURNING *'
 export const GET_DEPOSIT = 'SELECT * FROM deposits WHERE transactionId = $1'
 export const DELETE_DEPOSIT = 'DELETE FROM deposits WHERE transactionId = $1'
 
-export const ADD_PURCHASED_ITEM = 'INSERT INTO purchaseditems(purchaseId, itemId, quantity, purchasePrice) VALUES ($1, $2, $3, $4) RETURNING *'
-export const GET_PURCHASED_ITEMS = 'SELECT * FROM purchasedItems WHERE purchaseId = $1'
+export const ADD_PURCHASED_ITEM = 'INSERT INTO purchaseditems(transactionId, quantity, purchasePrice, purchasePriceName, itemId, displayName) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *'
+export const ADD_PURCHASED_ITEM_WITH_ICON = 'INSERT INTO purchaseditems(transactionId, quantity, purchasePrice, purchasePriceName, itemId, displayName, iconUrl) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *'
+export const GET_PURCHASED_ITEMS = 'SELECT * FROM purchasedItems WHERE transactionId = $1'
 export const HAS_BEEN_PURCHASED = 'SELECT EXISTS(SELECT * FROM purchasedItems WHERE itemId = $1)'
 
 export const ADD_FAVORITE_ITEM = 'INSERT INTO favoriteItems(userId, itemId) VALUES($1, $2)'
