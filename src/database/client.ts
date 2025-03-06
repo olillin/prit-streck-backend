@@ -83,7 +83,7 @@ class DatabaseClient extends Client {
         return await this.fetchFirst(q.GET_ITEM, itemId)
     }
 
-    async getItemsInGroup(groupId: GroupId): Promise<tableType.Items[] | undefined> {
+    async getItemsInGroup(groupId: GroupId): Promise<tableType.Items[]> {
         return await this.fetchRows(q.GET_ITEMS_IN_GROUP, groupId)
     }
 

@@ -18,7 +18,7 @@ export function toItem(item: tableType.Items, prices: tableType.Prices[], favori
         timesPurchased: item.timespurchased,
         visible: item.visible,
         favorite: favorite,
-        ...(item.iconurl !== undefined && { icon: item.iconurl }),
+        ...(!!item.iconurl && { icon: item.iconurl }),
     }
 }
 

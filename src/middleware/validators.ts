@@ -43,8 +43,8 @@ export const login = () => [
 export const getUser = () => []
 
 export const getTransactions = () => [
-    param('limit').default(50).isInt({ min: 1, max: 100 }),
-    param('offset').default(0).isInt({ min: 0 }),
+    query('limit').default(50).isInt({ min: 1, max: 100 }),
+    query('offset').default(0).isInt({ min: 0 }),
     //
 ]
 
@@ -63,10 +63,10 @@ export const postDeposit = () => [
     //
 ]
 
-export const itemSortModes = <const>['popular', 'cheap', 'expensive', 'new', 'old']
+export const itemSortModes = <const>['popular', 'cheap', 'expensive', 'new', 'old', 'name_a2z', 'name_z2a']
 export const getItems = () => [
-    param('sort').default('popular').isString().trim().isIn(itemSortModes),
-    param('visibleOnly').default(true).isBoolean(),
+    query('sort').default('popular').isString().trim().isIn(itemSortModes),
+    query('visibleOnly').default(true).isBoolean({}),
     //
 ]
 

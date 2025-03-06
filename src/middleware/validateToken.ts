@@ -58,8 +58,6 @@ export function verifyToken(token: string): LocalJwt {
 
 export function getUserId(res: Response): UserId {
     const jwt: LocalJwt = res.locals.jwt
-    console.log('JWT:')
-    console.log(jwt)
     return jwt.userId
 }
 

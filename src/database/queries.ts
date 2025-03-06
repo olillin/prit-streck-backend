@@ -20,7 +20,7 @@ export const ITEM_NAME_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHER
 export const DELETE_ITEM = 'DELETE FROM items WHERE itemId = $1'
 
 export const CREATE_PRICE = 'INSERT INTO prices(itemId, price, displayName) VALUES ($1, $2, $3) RETURNING *'
-export const GET_PRICES_FOR_ITEM = 'SELECT * FROM prices WHERE itemId = $1'
+export const GET_PRICES_FOR_ITEM = 'SELECT * FROM prices WHERE itemId = $1 ORDER BY price ASC'
 export const REMOVE_PRICES_FOR_ITEM = 'DELETE FROM prices WHERE itemId = $1'
 
 export const CREATE_TRANSACTION = 'INSERT INTO transactions(groupId, purchasedBy, purchasedFor) VALUES ($1, $2, $3) RETURNING *'
