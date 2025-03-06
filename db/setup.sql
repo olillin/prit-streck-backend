@@ -16,7 +16,7 @@ CREATE TABLE Items (
     IconUrl VARCHAR(255),
     AddedTime TIMESTAMP NOT NULL DEFAULT NOW(),
     TimesPurchased INT NOT NULL DEFAULT 0,
-    Visible BOOLEAN NOT NULL DEFAULT true,
+    Visible BOOLEAN NOT NULL DEFAULT 't',
     UNIQUE (GroupId, DisplayName),
     PRIMARY KEY (Id),
     FOREIGN KEY (GroupId) REFERENCES Groups(GammaId)

@@ -111,6 +111,10 @@ class DatabaseClient extends Client {
         return !!(await this.fetchFirst<tableType.Exists>(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId))!.exists
     }
 
+    async isItemVisible(itemId: number): Promise<boolean> {
+        return (await this.getItem(itemId))?.visible === true
+    }
+
     async deleteItem(itemId: number): Promise<void> {
         await this.fetch(q.DELETE_ITEM, itemId)
     }

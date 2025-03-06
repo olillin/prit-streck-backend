@@ -5,9 +5,12 @@ import { errors } from '../errors'
 import { verifyToken } from './validateToken'
 import * as getter from '../util/getter'
 
-export async function checkUserExists(value: string): Promise<boolean> {
+export async function checkUserExists(value: string): Promise<void> {
     const db = await database()
-    return await db.userExists(value as UserId)
+    const exists = await db.userExists(value as UserId)
+    if (!exists) {
+        throw new Error('User does not exist')
+    }
 }
 
 function getGroupId(meta: Meta): GroupId {
@@ -18,17 +21,21 @@ function getGroupId(meta: Meta): GroupId {
     return groupId
 }
 
-export async function checkItemExists(value: string, meta: Meta): Promise<boolean> {
+export async function checkItemExists(value: string, meta: Meta): Promise<void> {
     const db = await database()
     const groupId = getGroupId(meta)
-    return await db.itemExistsInGroup(parseInt(value), groupId)
+    const exists = await db.itemExistsInGroup(parseInt(value), groupId)
+    if (!exists) {
+        throw new Error('Item does not exist')
+    }
 }
 
-export async function checkItemVisible(value: string, meta: Meta): Promise<boolean> {
+export async function checkItemVisible(value: string, meta: Meta): Promise<void> {
     const db = await database()
-    const itemId: number = parseInt(value)
-    const item = (await db.getItem(itemId))!
-    return item.visible
+    const visible = await db.isItemVisible(parseInt(value))
+    if (!visible) {
+        throw new Error('Item is not visible')
+    }
 }
 
 export async function checkDisplayNameUnique(value: string, meta: Meta): Promise<void> {
