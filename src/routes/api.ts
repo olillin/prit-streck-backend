@@ -1,145 +1,232 @@
 import { Request, Response } from 'express'
-import { ClientApi, GroupId, UserId } from 'gammait'
+import { GroupId, UserId } from 'gammait'
 import { userAvatarUrl } from 'gammait/urls'
-import DatabaseClient from '../database/client'
+import { clientApi, database } from '../config/clients'
 import { errors, sendError } from '../errors'
 import { getGroupId, getUserId } from '../middleware/validateToken'
-import { Item, ItemsResponse, ResponseBody, User } from '../types'
+import { Item, ItemResponse, ItemsResponse, PostItemBody, ResponseBody, ItemSortMode, User, GetPurchaseBody, PostPurchaseBody, PatchItemBody, Purchase, PurchaseResponse, UserResponse } from '../types'
+import * as tableType from '../database/types'
+import * as convert from '../util/convert'
 
-export function getUser(database: DatabaseClient, client: ClientApi) {
-    return async (req: Request, res: Response) => {
-        const userId: UserId = getUserId(res)
+export async function getUser(req: Request, res: Response) {
+    const db = await database()
 
-        const rowPromise = database.getUser(userId).catch(reason => {
+    const userId: UserId = getUserId(res)
+
+    // Get requests
+    const dbUserPromise = db.getUser(userId).catch(reason => {
+        if (!res.headersSent) {
             console.log(reason)
             sendError(res, 500, 'Failed to fetch user from database')
-        })
-        const gammaUserPromise = client.getUser(userId).catch(reason => {
+        }
+    })
+    const gammaUserPromise = clientApi.getUser(userId).catch(reason => {
+        if (!res.headersSent) {
             console.log(reason)
             sendError(res, 404, 'User does not exist')
-        })
-        const groupsPromise = client.getGroupsFor(userId).catch(reason => {
+        }
+    })
+    const groupsPromise = clientApi.getGroupsFor(userId).catch(reason => {
+        if (!res.headersSent) {
             console.log(reason)
             sendError(res, 500, 'Failed to fetch groups')
+        }
+    })
+
+    // Await promises
+    const dbUser = await dbUserPromise
+    if (dbUser === undefined) {
+        sendError(res, 404, 'User does not exist')
+        return
+    }
+    const gammaUser = await gammaUserPromise
+    if (!gammaUser) {
+        sendError(res, 502, 'Failed to get user from gamma')
+        return
+    }
+    const groups = await groupsPromise
+    if (!groups) {
+        sendError(res, 502, 'Failed to get groups from gamma')
+        return
+    }
+
+    const group = getAuthorizedGroup(groups)
+    if (!group) {
+        sendError(res, errors.noPermission)
+    }
+
+    const user: ResponseBody<UserResponse> = { data: convert.toUserResponse(dbUser, gammaUser, groups) }
+    res.json(user)
+}
+
+export async function getPurchases(req: Request, res: Response) {
+    const db = await database()
+    const { limit, offset } = req.body as GetPurchaseBody
+
+    // TODO: Get paginated purchases
+}
+
+export async function postPurchase(req: Request, res: Response) {
+    const db = await database()
+
+    const { userId: purchasedFor, items } = req.body as PostPurchaseBody
+
+    const purchasedBy: UserId = getUserId(res)
+    const groupId: GroupId = getGroupId(res)
+
+    // Create transaction
+    let transaction: tableType.Transactions
+    try {
+        transaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
+    } catch (e) {
+        console.error('Error occured while trying to create purchase')
+        console.error(e)
+        sendError(res, errors.unexpected)
+        return
+    }
+
+    // Add purchase items
+    const itemPromises = items.map(item =>
+        db.addPurchasedItem(
+            transaction.id, //
+            item.id,
+            item.quantity,
+            item.purchasePrice
+        )
+    )
+    await Promise.all(itemPromises)
+
+    const newPurchase: Purchase = await convert.getPurchase(transaction.id)
+    const body: ResponseBody<PurchaseResponse> = {
+        data: {
+            purchase: newPurchase,
+        },
+    }
+    res.json(body)
+}
+
+export async function getItems(req: Request, res: Response) {
+    const db = await database()
+    const sort: ItemSortMode = req.body.sort
+    const visibleOnly: boolean = req.body.visibleOnly
+
+    const userId: UserId = getUserId(res)
+    const groupId: GroupId = getGroupId(res)
+
+    const dbItems = (await db.getItemsInGroup(groupId))!
+    const items: Promise<Item>[] = dbItems
+        .filter(dbItem => !(!dbItem.visible && visibleOnly))
+        .map(async dbItem => {
+            const [prices, favorite] = await Promise.all([db.getPricesForItem(dbItem.id), db.isFavorite(userId, dbItem.id)])
+            const item: Item = convert.toItem(dbItem, prices, favorite)
+            return item
         })
-
-        console.log('Waiting for row')
-        const row = await rowPromise
-        if (!row) {
-            sendError(res, 404, 'User does not exist')
-            return
+    Promise.all(items).then(items => {
+        switch (sort) {
+            case 'popular':
+                items.sort((a, b) => a.timesPurchased - b.timesPurchased)
+                break
+            case 'cheap':
+                items.sort((a, b) => a.prices[0].price - b.prices[0].price)
+                break
+            case 'expensive':
+                items.sort((a, b) => b.prices[0].price - a.prices[0].price)
+                break
+            case 'new':
+                items.sort((a, b) => a.addedTime - b.addedTime)
+                break
+            case 'old':
+                items.sort((a, b) => b.addedTime - a.addedTime)
+                break
         }
+        const body: ResponseBody<ItemsResponse> = { data: { items } }
+        res.json(body)
+    })
+}
 
-        console.log('Waiting for user')
-        const gammaUser = await gammaUserPromise
-        if (!gammaUser) {
-            sendError(res, 502, 'Failed to get user from gamma')
-            return
-        }
-
-        console.log('Waiting for groups')
-        const groups = await groupsPromise
-        if (!groups) {
-            sendError(res, 502, 'Failed to get groups from gamma')
-            return
-        }
-
-        console.log('Res')
-        const user: User = {
-            id: userId,
-            balance: row.balance,
-            avatarUrl: userAvatarUrl(userId),
-            firstName: gammaUser.firstName,
-            lastName: gammaUser.lastName,
-            nick: gammaUser.nick,
-        }
-        res.json(user)
+export async function postItem(req: Request, res: Response) {
+    const { displayName, prices, icon } = req.body as PostItemBody
+    const db = await database()
+    const groupId = getGroupId(res)
+    if (icon) {
+        await db.createItem(groupId, displayName, icon)
+    } else {
+        await db.createItem(groupId, displayName)
     }
 }
 
-export function getPurchases(database: DatabaseClient) {
-    return async (req: Request, res: Response) => {}
-}
+export async function getItem(req: Request, res: Response) {
+    const itemId = parseInt(req.params.id)
+    const db = await database()
+    const userId: UserId = getUserId(res)
 
-export function postPurchase(database: DatabaseClient) {
-    return async (req: Request, res: Response) => {}
-}
+    const [dbItem, dbPrices, favorite] = await Promise.all([
+        db.getItem(itemId), //
+        db.getPricesForItem(itemId),
+        db.isFavorite(userId, itemId),
+    ])
 
-export function getItems(database: DatabaseClient) {
-    return async (req: Request, res: Response) => {
-        const sortModes = <const>['recentlyPurchased', 'popular', 'cheap', 'expensive', 'new', 'old']
-        type SortMode = (typeof sortModes)[number]
-
-        const sort: SortMode = req.body.sort ?? 'recentlyPurchased'
-        if (!sortModes.includes(sort)) {
-            sendError(res, errors.unknownSortMode)
-            return
-        }
-        const visibleOnly: boolean = !!(req.body.visibleOnly ?? true)
-
-        const groupId: GroupId = getGroupId(res)
-        const dbItems = (await database.getItemsInGroup(groupId))!
-        const items: Promise<Item>[] = dbItems
-            .filter(dbItem => !(!dbItem.visible && visibleOnly))
-            .map(async dbItem => {
-                const prices = await database.getPricesForItem(dbItem.id)
-                const item: Item = {
-                    id: dbItem.id,
-                    addedTime: dbItem.addedtime.getTime(),
-                    displayName: dbItem.displayname,
-                    prices: prices.map(price => ({
-                        price: price.price,
-                        displayName: price.displayname,
-                    })),
-                    timesPurchased: dbItem.timespurchased,
-                    visible: dbItem.visible,
-                    ...(dbItem.iconurl !== undefined && { icon: dbItem.iconurl }),
-                }
-                return item
-            })
-        Promise.all(items).then(items => {
-            switch (sort) {
-                case 'recentlyPurchased':
-                    sendError(res, 500, 'Unimplemented sorting mode')
-                    break
-                case 'popular':
-                    items.sort((a, b) => a.timesPurchased - b.timesPurchased)
-                    break
-                case 'cheap':
-                    items.sort((a, b) => a.prices[0].price - b.prices[0].price)
-                    break
-                case 'expensive':
-                    items.sort((a, b) => b.prices[0].price - a.prices[0].price)
-                    break
-                case 'new':
-                    items.sort((a, b) => a.addedTime - b.addedTime)
-                    break
-                case 'old':
-                    items.sort((a, b) => b.addedTime - a.addedTime)
-                    break
-            }
-            const data: ItemsResponse = {
-                items,
-            }
-            const body: ResponseBody = {
-                data,
-            }
-            res.json(body)
-        })
+    const groupId = getGroupId(res)
+    if (!dbItem || dbItem.groupid !== groupId) {
+        sendError(res, errors.itemNotExist)
+        return
     }
+
+    const data: ItemResponse = {
+        item: convert.toItem(dbItem, dbPrices, favorite),
+    }
+    const body: ResponseBody<ItemResponse> = { data }
+
+    res.json(body)
 }
 
-export function postItem(database: DatabaseClient) {
-    return async (req: Request, res: Response) => {}
+export async function patchItem(req: Request, res: Response) {
+    const db = await database()
+    const userId: UserId = getUserId(res)
+
+    const itemId = parseInt(req.params.id)
+    const { icon, displayName, visible, favorite, prices } = req.body as PatchItemBody
+
+    // Update Items table
+    const columns: (Extract<keyof tableType.Items, string> | undefined)[] = ['iconurl', 'displayname', 'visible']
+    const values = [icon, displayName, visible]
+    for (let i = 0; i < values.length; i++) {
+        if (!values[i]) columns[i] = undefined
+    }
+
+    await db.updateItem(
+        itemId,
+        columns.filter(x => x !== undefined),
+        values.filter(x => x !== undefined)
+    )
+
+    if (favorite !== undefined) {
+        if (favorite) await db.removeFavorite(userId, itemId)
+        else await db.addFavorite(userId, itemId)
+    }
+
+    if (prices !== undefined) {
+        await db.removePricesForItem(itemId)
+        for (const price of prices) {
+            await db.addPrice(itemId, price.price, price.displayName)
+        }
+    }
+
+    let newItem: Item
+    try {
+        newItem = await convert.getItem(itemId, userId)
+    } catch {
+        console.error(`Failed to get item ${itemId} from database after patch`)
+        sendError(res, errors.unexpected)
+        return
+    }
+
+    const data: ItemResponse = { item: newItem }
+    const body: ResponseBody<ItemResponse> = { data }
+
+    res.json(body)
 }
 
-export function getItem(database: DatabaseClient) {
-    return async (req: Request, res: Response) => {}
-}
-
-export function putItem(database: DatabaseClient) {
-    return async (req: Request, res: Response) => {}
-}
-export function deleteItem(database: DatabaseClient) {
-    return async (req: Request, res: Response) => {}
+export async function deleteItem(req: Request, res: Response) {
+    const db = await database()
 }

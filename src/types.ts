@@ -1,5 +1,6 @@
 import { GroupId, UserId } from 'gammait'
 import { JwtPayload } from 'jsonwebtoken'
+import { itemSortModes } from './middleware/validators'
 
 // #region Basic types
 export interface Group {
@@ -28,18 +29,25 @@ export interface Item {
     prices: Price[]
     timesPurchased: number
     visible: boolean
+    favorite: boolean
 }
 
 export interface Price {
     price: number
-    displayName?: string
+    displayName: string
 }
 
-export interface Purchase {
+export type TransactionType = 'purchase' | 'deposit'
+export interface Transaction<T extends TransactionType> {
+    type: T
     id: number
-    purchasedBy: UserId
-    purchasedFor: UserId
-    purchasedDate: number
+
+    createdBy: UserId
+    createdFor: UserId
+    createdTime: number
+}
+
+export interface Purchase extends Transaction<'purchase'> {
     items: PurchasedItem[]
 }
 
@@ -48,26 +56,29 @@ export interface PurchasedItem {
     quantity: number
     purchasePrice: number
 }
+
+export interface Deposit extends Transaction<'deposit'> {
+    total: number
+}
 // #endregion Basic types
 
 // #region Response types
-export interface ResponseBody {
-    data?: ResponseData
-    error?: ResponseError
-}
-
-export interface ResponseData {}
+export type ResponseBody<T> = [T] extends [never]
+    ? { error: ResponseError } //
+    : { data: T }
 
 export interface ResponseError {
     code: number
     message: string
 }
 
-export interface UserResponse extends User, ResponseData {
+export interface UserResponse {
+    user: User
     group: Group
 }
 
-export interface GroupResponse extends Group, ResponseData {
+export interface GroupResponse {
+    group: Group
     members: User[]
 }
 
@@ -81,9 +92,8 @@ export interface LocalJwt extends JwtPayload {
     groupId: GroupId
 }
 
-export interface LoginResponse {
+export interface LoginResponse extends UserResponse {
     token: JWT
-    user: UserResponse
 }
 
 export interface ItemsResponse {
@@ -93,4 +103,54 @@ export interface ItemsResponse {
 export interface ItemResponse {
     item: Item
 }
+
+export interface PurchaseResponse {
+    purchase: Purchase
+}
+
+export interface DepositResponse {
+    deposit: Deposit
+}
+
+export interface PaginatedResponse {
+    next?: string
+    previous?: string
+}
+
+export interface TransactionsResponse extends PaginatedResponse {
+    transactions: Transaction<any>[]
+}
 // #endregion Response types
+
+// #region Request types
+export interface GetPurchaseBody {
+    limit: number
+    offset: number
+}
+
+export interface PostPurchaseBody {
+    userId: UserId
+    items: Array<PurchasedItem>
+}
+
+export interface GetItemsBody {
+    sort: ItemSortMode
+    visibleOnly: boolean
+}
+
+export interface PostItemBody {
+    displayName: string
+    prices: Price[]
+    icon?: string
+}
+
+export interface PatchItemBody {
+    icon?: string
+    displayName?: string
+    prices?: Price[]
+    visible?: boolean
+    favorite?: boolean
+}
+// #endregion Request types
+
+export type ItemSortMode = (typeof itemSortModes)[number]

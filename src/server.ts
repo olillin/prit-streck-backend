@@ -1,33 +1,12 @@
-import express from 'express'
+import express, { NextFunction, Request, Response } from 'express'
 import rateLimit from 'express-rate-limit'
-import { AuthorizationCode, ClientApi } from 'gammait'
+import { authorizationCode } from './config/clients'
 import env from './config/env'
-import DatabaseClient from './database/client'
+import { errors, sendError } from './errors'
 import createApiRouter from './routers/api'
 import { login as loginRoute } from './routes/login'
 
 async function main() {
-    const authorizationCode = new AuthorizationCode({
-        clientId: env.GAMMA_CLIENT_ID,
-        clientSecret: env.GAMMA_CLIENT_SECRET,
-        redirectUri: env.GAMMA_REDIRECT_URI,
-        scope: ['openid', 'profile'],
-    })
-    const client = new ClientApi({
-        authorization: env.GAMMA_API_AUTHORIZATION,
-    })
-
-    // Connect to database
-    const database = new DatabaseClient({
-        user: env.PGUSER,
-        password: env.PGPASSWORD,
-        host: env.PGHOST,
-        port: parseInt(env.PGPORT),
-        database: env.PGDATABASE,
-    })
-    await database.connect()
-
-    // Setup server
     const app = express()
 
     // Rate limit
@@ -44,10 +23,16 @@ async function main() {
         res.redirect(authorizationCode.authorizeUrl())
     })
 
-    app.post('/login', loginRoute(authorizationCode, client, database))
+    app.post('/login', loginRoute())
 
-    const api = createApiRouter(env.GAMMA_API_AUTHORIZATION, database)
+    const api = await createApiRouter()
     app.use('/api', api)
+
+    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+        console.error(err)
+        console.trace(err)
+        sendError(res, errors.unexpected)
+    })
 
     app.listen(parseInt(env.PORT))
     console.log(`Listening on port ${env.PORT}`)

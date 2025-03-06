@@ -1,16 +1,17 @@
 import { GroupId, UserId } from 'gammait'
+import { QueryResultRow } from 'pg'
 
-export interface Users {
+export interface Users extends QueryResultRow {
     gammaid: UserId
     groupid: GroupId
     balance: number
 }
 
-export interface Groups {
+export interface Groups extends QueryResultRow {
     gammaid: GroupId
 }
 
-export interface Items {
+export interface Items extends QueryResultRow {
     id: number
     groupid: GroupId
     displayname: string
@@ -20,23 +21,37 @@ export interface Items {
     visible: boolean
 }
 
-export interface Prices {
+export interface Prices extends QueryResultRow {
     itemid: number
     price: number
-    displayname?: string
+    displayname: string
 }
 
-export interface Purchases {
+export interface Transactions extends QueryResultRow {
     id: number
     groupid: GroupId
-    purchasedby: UserId
-    purchasedfor: UserId
-    purchaseddate: Date
+    createdby: UserId
+    createdfor: UserId
+    createdtime: Date
 }
 
-export interface PurchasedItems {
+export interface PurchasedItems extends QueryResultRow {
     purchaseid: number
     itemid: number
     quantity: number
     purchaseprice: number
+}
+
+export interface Deposits extends QueryResultRow {
+    transactionid: number
+    total: number
+}
+
+export interface FavoriteItems extends QueryResultRow {
+    userid: UserId
+    itemid: number
+}
+
+export interface Exists extends QueryResultRow {
+    exists: boolean
 }
