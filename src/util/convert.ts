@@ -47,7 +47,7 @@ export function toUser(dbUser: tableType.Users, gammaUser: gamma.User | gamma.Us
     }
 }
 
-export function toGroup(gammaGroup: gamma.Group): Group {
+export function toGroup(gammaGroup: gamma.Group | gamma.GroupWithPost): Group {
     return {
         id: gammaGroup.id,
         avatarUrl: groupAvatarUrl(gammaGroup.id),

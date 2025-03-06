@@ -1,12 +1,13 @@
 import { Request, Response } from 'express'
 import { GroupId, UserId } from 'gammait'
-import { userAvatarUrl } from 'gammait/urls'
 import { clientApi, database } from '../config/clients'
+import * as tableType from '../database/types'
 import { errors, sendError } from '../errors'
 import { getGroupId, getUserId } from '../middleware/validateToken'
-import { Item, ItemResponse, ItemsResponse, PostItemBody, ResponseBody, ItemSortMode, User, GetPurchaseBody, PostPurchaseBody, PatchItemBody, Purchase, PurchaseResponse, UserResponse } from '../types'
-import * as tableType from '../database/types'
+import { Deposit, GetPurchaseBody, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, TransactionResponse, UserResponse } from '../types'
 import * as convert from '../util/convert'
+import * as getter from '../util/getter'
+import { getAuthorizedGroup } from '../util/getter'
 
 export async function getUser(req: Request, res: Response) {
     const db = await database()
@@ -53,13 +54,16 @@ export async function getUser(req: Request, res: Response) {
     const group = getAuthorizedGroup(groups)
     if (!group) {
         sendError(res, errors.noPermission)
+        return
     }
 
-    const user: ResponseBody<UserResponse> = { data: convert.toUserResponse(dbUser, gammaUser, groups) }
-    res.json(user)
+    const body: ResponseBody<UserResponse> = {
+        data: convert.toUserResponse(dbUser, gammaUser, group),
+    }
+    res.json(body)
 }
 
-export async function getPurchases(req: Request, res: Response) {
+export async function getTransactions(req: Request, res: Response) {
     const db = await database()
     const { limit, offset } = req.body as GetPurchaseBody
 
@@ -75,20 +79,20 @@ export async function postPurchase(req: Request, res: Response) {
     const groupId: GroupId = getGroupId(res)
 
     // Create transaction
-    let transaction: tableType.Transactions
+    let dbTransaction: tableType.Transactions
     try {
-        transaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
+        dbTransaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
     } catch (e) {
-        console.error('Error occured while trying to create purchase')
-        console.error(e)
-        sendError(res, errors.unexpected)
+        const message = 'Failed to create purchase transaction, ' + e
+        console.error(message)
+        sendError(res, errors.unexpected(message))
         return
     }
 
     // Add purchase items
     const itemPromises = items.map(item =>
         db.addPurchasedItem(
-            transaction.id, //
+            dbTransaction.id, //
             item.id,
             item.quantity,
             item.purchasePrice
@@ -96,12 +100,42 @@ export async function postPurchase(req: Request, res: Response) {
     )
     await Promise.all(itemPromises)
 
-    const newPurchase: Purchase = await convert.getPurchase(transaction.id)
-    const body: ResponseBody<PurchaseResponse> = {
-        data: {
-            purchase: newPurchase,
-        },
+    const transaction: Purchase = await getter.purchase(dbTransaction.id)
+    const body: ResponseBody<TransactionResponse> = { data: { transaction } }
+    res.json(body)
+}
+
+export async function postDeposit(req: Request, res: Response) {
+    const db = await database()
+
+    const { userId: purchasedFor, total } = req.body as PostDepositBody
+
+    const purchasedBy: UserId = getUserId(res)
+    const groupId: GroupId = getGroupId(res)
+
+    // Create transaction
+    let dbTransaction: tableType.Transactions
+    try {
+        dbTransaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
+    } catch (e) {
+        const message = 'Failed to create deposit transaction, ' + e
+        console.error(message)
+        sendError(res, errors.unexpected(message))
+        return
     }
+
+    let dbDeposit: tableType.Deposits
+    try {
+        dbDeposit = await db.createDeposit(dbTransaction.id, total)
+    } catch (e) {
+        const message = 'Failed to create deposit, ' + e
+        console.error(message)
+        sendError(res, errors.unexpected(message))
+        return
+    }
+
+    const transaction: Deposit = convert.toDeposit(dbTransaction, dbDeposit)
+    const body: ResponseBody<TransactionResponse> = { data: { transaction } }
     res.json(body)
 }
 
@@ -214,10 +248,11 @@ export async function patchItem(req: Request, res: Response) {
 
     let newItem: Item
     try {
-        newItem = await convert.getItem(itemId, userId)
+        newItem = await getter.item(itemId, userId)
     } catch {
-        console.error(`Failed to get item ${itemId} from database after patch`)
-        sendError(res, errors.unexpected)
+        const message = `Failed to get item ${itemId} from database after patch`
+        console.error(message)
+        sendError(res, errors.unexpected(message))
         return
     }
 

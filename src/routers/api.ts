@@ -13,8 +13,9 @@ async function createApiRouter(): Promise<Router> {
     type HandlerName = keyof typeof validate & keyof typeof route
     const routes: [Method, string, HandlerName][] = [
         ['get', '/user', 'getUser'],
-        ['get', '/group/purchase', 'getPurchases'],
+        ['get', '/group/transactions', 'getTransactions'],
         ['post', '/group/purchase', 'postPurchase'],
+        ['post', '/group/deposit', 'postDeposit'],
         ['get', '/group/item', 'getItems'],
         ['post', '/group/item', 'postItem'],
         ['get', '/group/item/:id', 'getItem'],

@@ -11,8 +11,9 @@ async function validationErrorHandler(req: Request, res: Response, next: NextFun
 
     const error = result.array()[0]
     if (error.type !== 'field') {
-        console.error(`Illegal validation error type '${error.type}': ${JSON.stringify(error)}`)
-        sendError(res, errors.unexpected)
+        const message = `Illegal validation error type '${error.type}': ${JSON.stringify(error)}`
+        console.error(message)
+        sendError(res, errors.unexpected(message))
         return
     }
 

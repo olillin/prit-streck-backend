@@ -31,7 +31,7 @@ async function main() {
     app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
         console.error(err)
         console.trace(err)
-        sendError(res, errors.unexpected)
+        sendError(res, errors.unexpected(err.message))
     })
 
     app.listen(parseInt(env.PORT))

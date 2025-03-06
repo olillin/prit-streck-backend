@@ -40,7 +40,7 @@ export const login = () => [
 
 export const getUser = () => []
 
-export const getPurchases = () => [
+export const getTransactions = () => [
     body('limit').default(50).isInt(),
     body('offset').default(0).isInt(),
     //
@@ -52,6 +52,12 @@ export const postPurchase = () => [
     body('items.*.id').isInt(),
     body('items.*.count').isInt(),
     body('items.*.purchasePrice').isDecimal(),
+    //
+]
+
+export const postDeposit = () => [
+    body('userId').isString().trim().isUUID().bail().custom(checkUserExists),
+    body('total').isDecimal(),
     //
 ]
 

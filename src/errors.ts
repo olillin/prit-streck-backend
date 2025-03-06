@@ -11,7 +11,7 @@ export const errors = {
     nbf: [401, 'Token has expired'],
 
     noPermission: [403, 'No permission to access this service'],
-    unexpected: [500, 'An unexpected issue occured. Please create an issue on GitHub'],
+    unexpected: (details: string) => [500, `An unexpected issue occured. Please create an issue on GitHub. Details: ${details}`] as const,
     invalidGamma: [502, 'Received an invalid response from gamma'],
     unreachableGamma: [504, 'Unable to reach gamma'],
 

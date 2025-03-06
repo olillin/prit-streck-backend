@@ -104,12 +104,8 @@ export interface ItemResponse {
     item: Item
 }
 
-export interface PurchaseResponse {
-    purchase: Purchase
-}
-
-export interface DepositResponse {
-    deposit: Deposit
+export interface TransactionResponse {
+    transaction: Transaction<any>
 }
 
 export interface PaginatedResponse {
@@ -131,6 +127,11 @@ export interface GetPurchaseBody {
 export interface PostPurchaseBody {
     userId: UserId
     items: Array<PurchasedItem>
+}
+
+export interface PostDepositBody {
+    userId: UserId
+    total: number
 }
 
 export interface GetItemsBody {
