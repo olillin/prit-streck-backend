@@ -14,10 +14,10 @@ export const CREATE_ITEM_WITH_ICON = 'INSERT INTO items(groupId, displayName, ic
 export const GET_ITEM = 'SELECT * FROM items WHERE Id = $1 LIMIT 1'
 export const GET_ITEMS_IN_GROUP = 'SELECT * FROM items WHERE groupId = $1'
 export const UPDATE_ITEM = (columnName: string) => `UPDATE items SET ${columnName} = $2 WHERE id = $1 RETURNING *`
-export const ITEM_EXISTS = 'SELECT EXISTS(SELECT * FROM items WHERE Id = $1)'
+export const ITEM_EXISTS = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1)'
 export const ITEM_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1 AND groupId = $2)'
 export const ITEM_NAME_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE displayName = $1 AND groupId = $2)'
-export const DELETE_ITEM = 'DELETE FROM items WHERE itemId = $1'
+export const DELETE_ITEM = 'DELETE FROM items WHERE id = $1'
 
 export const CREATE_PRICE = 'INSERT INTO prices(itemId, price, displayName) VALUES ($1, $2, $3) RETURNING *'
 export const GET_PRICES_FOR_ITEM = 'SELECT * FROM prices WHERE itemId = $1 ORDER BY price ASC'

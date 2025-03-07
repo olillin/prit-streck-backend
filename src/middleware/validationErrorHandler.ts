@@ -10,15 +10,23 @@ async function validationErrorHandler(req: Request, res: Response, next: NextFun
     }
 
     const error = result.array()[0]
-    if (error.type !== 'field') {
-        const message = `Illegal validation error type '${error.type}': ${JSON.stringify(error)}`
-        console.error(message)
-        sendError(res, errors.unexpected(message))
+    if (error.type === 'field') {
+        console.log(error)
+        sendError(res, errors.invalidProperty(error.path))
+        return
+    } else if (error.type === 'alternative_grouped') {
+        console.log(error)
+        sendError(res, errors.invalidProperty(error.nestedErrors[0][0].path))
+        return
+    } else if (error.type === 'alternative') {
+        console.log(error)
+        sendError(res, errors.invalidProperty(error.nestedErrors[0].path))
         return
     }
 
-    console.log(error)
-
-    sendError(res, errors.invalidProperty(error.path))
+    const message = `Illegal validation error type '${error.type}': ${JSON.stringify(error)}`
+    console.error(message)
+    sendError(res, errors.unexpected(message))
+    return
 }
 export default validationErrorHandler

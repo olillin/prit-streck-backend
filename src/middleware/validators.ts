@@ -1,4 +1,4 @@
-import { body, Meta, param, query } from 'express-validator'
+import { body, Meta, oneOf, param, query } from 'express-validator'
 import { GroupId, UserId } from 'gammait'
 import { database } from '../config/clients'
 import { errors } from '../errors'
@@ -101,7 +101,10 @@ export const getItem = () => [
 
 export const patchItem = () => [
     param('id').isInt().bail().custom(checkItemExists),
-    body('icon').optional().escape().isURL(),
+    oneOf([
+        body('icon').optional().isString().bail().trim().escape().isURL(), //
+        body('icon').optional().exists(),
+    ]),
     body('displayName').optional().isString().trim().notEmpty().bail().escape().custom(checkDisplayNameUnique),
     body('prices').optional().isArray(),
     body('prices.*.price').isDecimal(),

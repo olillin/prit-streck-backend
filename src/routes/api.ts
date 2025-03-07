@@ -284,7 +284,7 @@ export async function patchItem(req: Request, res: Response) {
     const columns: (Extract<keyof tableType.Items, string> | undefined)[] = ['iconurl', 'displayname', 'visible']
     const values = [icon, displayName, visible]
     for (let i = 0; i < values.length; i++) {
-        if (values[i] === undefined || values[i] === null) columns[i] = undefined
+        if (values[i] === undefined) columns[i] = undefined
     }
 
     await db.updateItem(

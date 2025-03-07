@@ -42,7 +42,7 @@ export interface PurchasedItems extends QueryResultRow {
     purchaseprice: number
     purchasepricename: string
 
-    itemid: number
+    itemid: number | null
     displayname: string
     icon: string | null
 }

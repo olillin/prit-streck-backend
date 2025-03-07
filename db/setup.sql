@@ -27,7 +27,7 @@ CREATE TABLE Prices (
     Price FLOAT NOT NULL,
     DisplayName VARCHAR(32) NOT NULL,
     PRIMARY KEY (ItemId, DisplayName),
-    FOREIGN KEY (ItemId) REFERENCES Items(Id)
+    FOREIGN KEY (ItemId) REFERENCES Items(Id) ON DELETE CASCADE
 );
 
 CREATE TABLE Transactions (
@@ -47,17 +47,17 @@ CREATE TABLE PurchasedItems (
     Quantity INT NOT NULL,
     PurchasePrice FLOAT NOT NULL,
     PurchasePriceName VARCHAR(32) NOT NULL,
-    ItemId SERIAL NOT NULL,
+    ItemId SERIAL,
     DisplayName VARCHAR(32) NOT NULL,
     IconUrl VARCHAR(255),
-    FOREIGN KEY (TransactionId) REFERENCES Transactions(Id),
-    FOREIGN KEY (ItemId) REFERENCES Items(Id)
+    FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE,
+    FOREIGN KEY (ItemId) REFERENCES Items(Id) ON DELETE SET NULL
 );
 
 CREATE TABLE Deposits (
     TransactionId SERIAL NOT NULL,
     Total FLOAT NOT NULL,
-    FOREIGN KEY (TransactionId) REFERENCES Transactions(Id)
+    FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE
 );
 
 CREATE TABLE FavoriteItems (
@@ -65,5 +65,5 @@ CREATE TABLE FavoriteItems (
     ItemId SERIAL NOT NULL,
     UNIQUE (UserId, ItemId),
     FOREIGN KEY (UserId) REFERENCES Users(GammaId),
-    FOREIGN KEY (ItemId) REFERENCES Items(Id)
+    FOREIGN KEY (ItemId) REFERENCES Items(Id) ON DELETE CASCADE
 );

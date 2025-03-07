@@ -79,8 +79,8 @@ export function toTransaction<T extends TransactionType>(dbTransaction: tableTyp
 export function toPurchasedItem(dbPurchasedItem: tableType.PurchasedItems): PurchasedItem {
     return {
         item: {
-            id: dbPurchasedItem.itemid,
             displayName: dbPurchasedItem.displayname,
+            ...(!!dbPurchasedItem.itemid && { id: dbPurchasedItem.itemid }),
             ...(!!dbPurchasedItem.iconurl && { icon: dbPurchasedItem.iconurl }),
         },
         quantity: dbPurchasedItem.quantity,

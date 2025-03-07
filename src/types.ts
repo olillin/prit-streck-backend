@@ -53,7 +53,7 @@ export interface Purchase extends Transaction<'purchase'> {
 
 export interface PurchasedItem {
     item: {
-        id: number
+        id?: number
         displayName: string
         icon?: string
     }
