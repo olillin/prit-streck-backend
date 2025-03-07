@@ -54,8 +54,8 @@ export function login(): (req: Request, res: Response) => void {
 
         try {
             await authorizationCode.generateToken(code)
-        } catch (error) {
-            sendError(res, 500, 'Failed to generate token: ' + String(error))
+        } catch (error: any) {
+            sendError(res, errors.gammaToken(error))
             return
         }
 
