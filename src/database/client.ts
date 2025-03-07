@@ -138,8 +138,8 @@ class DatabaseClient extends Client {
     }
 
     // Transactions
-    async createTransaction(groupId: GroupId, purchasedBy: UserId, purchasedFor: UserId): Promise<tableType.Transactions> {
-        return (await this.fetchFirst(q.CREATE_TRANSACTION, groupId, purchasedBy, purchasedFor))!
+    async createTransaction(groupId: GroupId, createdBy: UserId, createdFor: UserId): Promise<tableType.Transactions> {
+        return (await this.fetchFirst(q.CREATE_TRANSACTION, groupId, createdBy, createdFor))!
     }
 
     async getTransaction(transactionId: number): Promise<tableType.Transactions | undefined> {

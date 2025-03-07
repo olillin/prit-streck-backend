@@ -110,6 +110,7 @@ export interface ItemResponse {
 
 export interface TransactionResponse {
     transaction: Transaction<any>
+    balance: number
 }
 
 export interface PaginatedResponse {

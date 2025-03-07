@@ -138,15 +138,21 @@ export async function getTransactions(req: Request, res: Response) {
 export async function postPurchase(req: Request, res: Response) {
     const db = await database()
 
-    const { userId: purchasedFor, items } = req.body as PostPurchaseBody
+    const { userId: createdFor, items } = req.body as PostPurchaseBody
 
-    const purchasedBy: UserId = getUserId(res)
+    const userId: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
+
+    const user = await db.getUser(userId)
+    if (!user) {
+        sendError(res, errors.userNotExist)
+        return
+    }
 
     // Create transaction
     let dbTransaction: tableType.Transactions
     try {
-        dbTransaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
+        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
     } catch (e) {
         const message = 'Failed to create purchase transaction, ' + e
         console.error(message)
@@ -155,8 +161,13 @@ export async function postPurchase(req: Request, res: Response) {
     }
 
     // Add purchase items
+    let total = 0
+
     const itemPromises = items.map(async item => {
-        const dbItem = await getter.item(item.id, purchasedBy)
+        const dbItem = await getter.item(item.id, userId)
+
+        // Update purchase total
+        total += item.purchasePrice.price * item.quantity
 
         return db.addPurchasedItem(
             dbTransaction.id, //
@@ -169,23 +180,33 @@ export async function postPurchase(req: Request, res: Response) {
     })
     await Promise.all(itemPromises)
 
+    // Update user balance
+    const balance = user.balance - total
+    await db.setBalance(userId, balance)
+
     const transaction: Purchase = await getter.purchase(dbTransaction.id)
-    const body: ResponseBody<TransactionResponse> = { data: { transaction } }
+    const body: ResponseBody<TransactionResponse> = { data: { transaction, balance } }
     res.json(body)
 }
 
 export async function postDeposit(req: Request, res: Response) {
     const db = await database()
 
-    const { userId: purchasedFor, total } = req.body as PostDepositBody
+    const { userId: createdFor, total } = req.body as PostDepositBody
 
-    const purchasedBy: UserId = getUserId(res)
+    const userId: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
+
+    const user = await db.getUser(userId)
+    if (!user) {
+        sendError(res, errors.userNotExist)
+        return
+    }
 
     // Create transaction
     let dbTransaction: tableType.Transactions
     try {
-        dbTransaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
+        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
     } catch (e) {
         const message = 'Failed to create deposit transaction, ' + e
         console.error(message)
@@ -203,8 +224,12 @@ export async function postDeposit(req: Request, res: Response) {
         return
     }
 
+    // Update user balance
+    const balance = user.balance + total
+    await db.setBalance(userId, balance)
+
     const transaction: Deposit = convert.toDeposit(dbTransaction, dbDeposit)
-    const body: ResponseBody<TransactionResponse> = { data: { transaction } }
+    const body: ResponseBody<TransactionResponse> = { data: { transaction, balance } }
     res.json(body)
 }
 
