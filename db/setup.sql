@@ -5,6 +5,7 @@ CREATE TABLE Groups (
 
 CREATE TABLE Users (
     GammaId VARCHAR(255) UNIQUE NOT NULL,
+    GroupId VARCHAR(255) NOT NULL,
     Balance FLOAT NOT NULL DEFAULT 0.0,
     PRIMARY KEY (GammaId)
 );

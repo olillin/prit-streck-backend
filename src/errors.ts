@@ -18,6 +18,7 @@ export const errors = {
 
     // Login errors
     noCode: [401, 'No authorization code provided'],
+    gammaToken: (error: string) => [502, `Failed to get gamma token: ${error}`] as const,
 
     // Purchase
     itemCount: [400, 'Item count must be greater than 0'],

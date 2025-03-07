@@ -3,7 +3,7 @@ export const GET_GROUP = 'SELECT * FROM groups WHERE gammaId = $1 LIMIT 1'
 export const GET_GROUPS = 'SELECT gammaId FROM groups'
 export const GROUP_EXISTS = 'SELECT EXISTS(SELECT * FROM groups WHERE gammaId = $1)'
 
-export const CREATE_USER = 'INSERT INTO users(gammaId) VALUES ($1) RETURNING *'
+export const CREATE_USER = 'INSERT INTO users(gammaId, groupId) VALUES ($1, $2) RETURNING *'
 export const GET_USER = 'SELECT * FROM users WHERE gammaId = $1 LIMIT 1'
 export const GET_USERS_IN_GROUP = 'SELECT * FROM users WHERE groupId = $1'
 export const SET_BALANCE = 'UPDATE users SET balance = $2 WHERE gammaId = $1 RETURNING *'

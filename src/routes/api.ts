@@ -4,7 +4,7 @@ import { clientApi, database } from '../config/clients'
 import * as tableType from '../database/types'
 import { errors, sendError } from '../errors'
 import { getGroupId, getUserId } from '../middleware/validateToken'
-import { Deposit, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, Transaction, TransactionResponse, TransactionsResponse, UserResponse } from '../types'
+import { Deposit, GroupResponse, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, Transaction, TransactionResponse, TransactionsResponse, User, UserResponse } from '../types'
 import * as convert from '../util/convert'
 import * as getter from '../util/getter'
 import { getAuthorizedGroup } from '../util/getter'
@@ -61,6 +61,40 @@ export async function getUser(req: Request, res: Response) {
     const body: ResponseBody<UserResponse> = {
         data: convert.toUserResponse(dbUser, gammaUser, group),
     }
+    res.json(body)
+}
+
+export async function getGroup(req: Request, res: Response) {
+    const db = await database()
+
+    const userId: UserId = getUserId(res)
+    const groupId: GroupId = getGroupId(res)
+
+    // Get group
+    const gammagroups = await clientApi.getGroupsFor(userId)
+    const gammaGroup = getAuthorizedGroup(gammagroups)
+    if (!gammaGroup) {
+        sendError(res, errors.noPermission)
+        return
+    }
+    const group = convert.toGroup(gammaGroup)
+
+    // Get members
+    let userPromises: Promise<User>[]
+    try {
+        userPromises = (await db.getUsersInGroup(groupId)).map(async dbUser => {
+            const gammaUser = await clientApi.getUser(dbUser.gammaid)
+            return convert.toUser(dbUser, gammaUser)
+        })
+    } catch (e) {
+        const message = `Failed to get users from gamma: ${e}`
+        console.error(message)
+        sendError(res, errors.invalidGamma)
+        return
+    }
+    const members = await Promise.all(userPromises)
+
+    const body: ResponseBody<GroupResponse> = { data: { group, members } }
     res.json(body)
 }
 
