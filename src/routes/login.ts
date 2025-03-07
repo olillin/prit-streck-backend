@@ -49,9 +49,7 @@ export function login(): (req: Request, res: Response) => void {
             return
         }
 
-        // Get clients
-        const db = await database()
-
+        // Get token from Gamma
         try {
             await authorizationCode.generateToken(code)
         } catch (error: any) {
@@ -59,6 +57,7 @@ export function login(): (req: Request, res: Response) => void {
             return
         }
 
+        const db = await database()
         const userInfo = await authorizationCode.userInfo()
         const id: UserId = userInfo.sub
         const groups = await clientApi.getGroupsFor(id)
@@ -75,7 +74,7 @@ export function login(): (req: Request, res: Response) => void {
             if (!groupExists) {
                 await db.createGroup(group.id)
             }
-            await db.createUser(id)
+            await db.createUser(id, group.id)
         }
         const dbUser = (await db.getUser(id))!
 

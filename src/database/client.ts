@@ -49,8 +49,8 @@ class DatabaseClient extends Client {
     }
 
     // Users
-    async createUser(userId: UserId): Promise<tableType.Users> {
-        return (await this.fetchFirst(q.CREATE_USER, userId))!
+    async createUser(userId: UserId, groupId: GroupId): Promise<tableType.Users> {
+        return (await this.fetchFirst(q.CREATE_USER, userId, groupId))!
     }
 
     async getUser(userId: UserId): Promise<tableType.Users | undefined> {

@@ -55,6 +55,8 @@ export const login = () => [
 
 export const getUser = () => []
 
+export const getGroup = () => []
+
 export const getTransactions = () => [
     query('limit').default(50).isInt({ min: 1, max: 100 }),
     query('offset').default(0).isInt({ min: 0 }),
