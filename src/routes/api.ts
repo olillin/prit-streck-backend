@@ -8,6 +8,7 @@ import { Deposit, GroupResponse, Item, ItemResponse, ItemSortMode, ItemsResponse
 import * as convert from '../util/convert'
 import * as getter from '../util/getter'
 import { getAuthorizedGroup } from '../util/getter'
+import { LegalItemColumn } from '../database/client'
 
 export async function getUser(req: Request, res: Response) {
     const db = await database()
@@ -138,15 +139,21 @@ export async function getTransactions(req: Request, res: Response) {
 export async function postPurchase(req: Request, res: Response) {
     const db = await database()
 
-    const { userId: purchasedFor, items } = req.body as PostPurchaseBody
+    const { userId: createdFor, items } = req.body as PostPurchaseBody
 
-    const purchasedBy: UserId = getUserId(res)
+    const userId: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
+
+    const user = await db.getUser(userId)
+    if (!user) {
+        sendError(res, errors.userNotExist)
+        return
+    }
 
     // Create transaction
     let dbTransaction: tableType.Transactions
     try {
-        dbTransaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
+        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
     } catch (e) {
         const message = 'Failed to create purchase transaction, ' + e
         console.error(message)
@@ -155,8 +162,17 @@ export async function postPurchase(req: Request, res: Response) {
     }
 
     // Add purchase items
+    let total = 0
+
     const itemPromises = items.map(async item => {
-        const dbItem = await getter.item(item.id, purchasedBy)
+        const dbItem = await getter.item(item.id, userId)
+
+        // Update purchase total
+        total += item.purchasePrice.price * item.quantity
+
+        // Update times purchased
+        const timesPurchased = dbItem.timesPurchased + item.quantity
+        await db.updateItem(dbItem.id, ['timespurchased'], [timesPurchased])
 
         return db.addPurchasedItem(
             dbTransaction.id, //
@@ -169,23 +185,33 @@ export async function postPurchase(req: Request, res: Response) {
     })
     await Promise.all(itemPromises)
 
+    // Update user balance
+    const balance = user.balance - total
+    await db.setBalance(userId, balance)
+
     const transaction: Purchase = await getter.purchase(dbTransaction.id)
-    const body: ResponseBody<TransactionResponse> = { data: { transaction } }
+    const body: ResponseBody<TransactionResponse> = { data: { transaction, balance } }
     res.json(body)
 }
 
 export async function postDeposit(req: Request, res: Response) {
     const db = await database()
 
-    const { userId: purchasedFor, total } = req.body as PostDepositBody
+    const { userId: createdFor, total } = req.body as PostDepositBody
 
-    const purchasedBy: UserId = getUserId(res)
+    const userId: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
+
+    const user = await db.getUser(userId)
+    if (!user) {
+        sendError(res, errors.userNotExist)
+        return
+    }
 
     // Create transaction
     let dbTransaction: tableType.Transactions
     try {
-        dbTransaction = await db.createTransaction(groupId, purchasedBy, purchasedFor)
+        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
     } catch (e) {
         const message = 'Failed to create deposit transaction, ' + e
         console.error(message)
@@ -203,8 +229,12 @@ export async function postDeposit(req: Request, res: Response) {
         return
     }
 
+    // Update user balance
+    const balance = user.balance + total
+    await db.setBalance(userId, balance)
+
     const transaction: Deposit = convert.toDeposit(dbTransaction, dbDeposit)
-    const body: ResponseBody<TransactionResponse> = { data: { transaction } }
+    const body: ResponseBody<TransactionResponse> = { data: { transaction, balance } }
     res.json(body)
 }
 
@@ -233,7 +263,7 @@ export async function getItems(req: Request, res: Response) {
     const items = await Promise.all(itemPromises)
 
     // Sort by popularity by default and when two items are equal in order
-    items.sort((a, b) => a.timesPurchased - b.timesPurchased)
+    items.sort((a, b) => b.timesPurchased - a.timesPurchased)
     switch (sort) {
         case 'popular':
             break
@@ -315,7 +345,7 @@ export async function patchItem(req: Request, res: Response) {
     const { icon, displayName, visible, favorite, prices } = req.body as PatchItemBody
 
     // Update Items table
-    const columns: (Extract<keyof tableType.Items, string> | undefined)[] = ['iconurl', 'displayname', 'visible']
+    const columns: (LegalItemColumn | undefined)[] = ['iconurl', 'displayname', 'visible']
     const values = [icon, displayName, visible]
     for (let i = 0; i < values.length; i++) {
         if (values[i] === undefined) columns[i] = undefined

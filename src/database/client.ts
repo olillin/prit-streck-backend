@@ -6,6 +6,9 @@ import { Price } from '../types'
 
 class ValidationError extends Error {}
 
+export const legalItemColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible'] as const
+export type LegalItemColumn = (typeof legalItemColumns)[number]
+
 class DatabaseClient extends Client {
     validateDatabase() {
         // TODO: Validate that all tables exist and are properly configured.
@@ -86,16 +89,14 @@ class DatabaseClient extends Client {
         return await this.fetchRows(q.GET_ITEMS_IN_GROUP, groupId)
     }
 
-    async updateItem(itemId: number, columns: string[], values: any[]): Promise<tableType.Items | undefined> {
+    async updateItem(itemId: number, columns: LegalItemColumn[], values: any[]): Promise<tableType.Items | undefined> {
         if (columns.length !== columns.length) {
             throw new Error(`Mismatched array lengths, ${columns.length} columns and ${values.length} values`)
         }
 
-        const legalColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible']
-
         let row: tableType.Items | undefined = undefined
         for (let i = 0; i < columns.length; i++) {
-            if (!legalColumns.includes(columns[i])) {
+            if (!legalItemColumns.includes(columns[i])) {
                 throw new Error(`Illegal column ${columns[i]}`)
             }
             row = await this.fetchFirst(q.UPDATE_ITEM(columns[i]), itemId, values[i])
@@ -138,8 +139,8 @@ class DatabaseClient extends Client {
     }
 
     // Transactions
-    async createTransaction(groupId: GroupId, purchasedBy: UserId, purchasedFor: UserId): Promise<tableType.Transactions> {
-        return (await this.fetchFirst(q.CREATE_TRANSACTION, groupId, purchasedBy, purchasedFor))!
+    async createTransaction(groupId: GroupId, createdBy: UserId, createdFor: UserId): Promise<tableType.Transactions> {
+        return (await this.fetchFirst(q.CREATE_TRANSACTION, groupId, createdBy, createdFor))!
     }
 
     async getTransaction(transactionId: number): Promise<tableType.Transactions | undefined> {
