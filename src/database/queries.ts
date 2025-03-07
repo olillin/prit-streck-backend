@@ -13,7 +13,7 @@ export const CREATE_ITEM = 'INSERT INTO items(groupId, displayName) VALUES ($1, 
 export const CREATE_ITEM_WITH_ICON = 'INSERT INTO items(groupId, displayName, iconurl) VALUES ($1, $2, $3) RETURNING *'
 export const GET_ITEM = 'SELECT * FROM items WHERE Id = $1 LIMIT 1'
 export const GET_ITEMS_IN_GROUP = 'SELECT * FROM items WHERE groupId = $1'
-export const UPDATE_ITEM = 'UPDATE items SET $2 = $3 WHERE itemId = $1 RETURNING *'
+export const UPDATE_ITEM = (columnName: string) => `UPDATE items SET ${columnName} = $2 WHERE id = $1 RETURNING *`
 export const ITEM_EXISTS = 'SELECT EXISTS(SELECT * FROM items WHERE Id = $1)'
 export const ITEM_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1 AND groupId = $2)'
 export const ITEM_NAME_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE displayName = $1 AND groupId = $2)'

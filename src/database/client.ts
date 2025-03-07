@@ -91,9 +91,14 @@ class DatabaseClient extends Client {
             throw new Error(`Mismatched array lengths, ${columns.length} columns and ${values.length} values`)
         }
 
+        const legalColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible']
+
         let row: tableType.Items | undefined = undefined
         for (let i = 0; i < columns.length; i++) {
-            row = await this.fetchFirst(q.UPDATE_ITEM, itemId, columns[i], values[i])
+            if (!legalColumns.includes(columns[i])) {
+                throw new Error(`Illegal column ${columns[i]}`)
+            }
+            row = await this.fetchFirst(q.UPDATE_ITEM(columns[i]), itemId, values[i])
         }
 
         return row

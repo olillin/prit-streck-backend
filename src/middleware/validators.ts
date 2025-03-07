@@ -42,7 +42,6 @@ export async function checkDisplayNameUnique(value: string, meta: Meta): Promise
     const db = await database()
     const groupId = getGroupId(meta)
     const nameExists = await db.itemNameExistsInGroup(value, groupId)
-    console.log(`Item name "${value}" exists: ${nameExists}`)
     if (nameExists) {
         throw new Error(errors.displayNameNotUnique[1])
     }

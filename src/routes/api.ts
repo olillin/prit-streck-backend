@@ -284,7 +284,7 @@ export async function patchItem(req: Request, res: Response) {
     const columns: (Extract<keyof tableType.Items, string> | undefined)[] = ['iconurl', 'displayname', 'visible']
     const values = [icon, displayName, visible]
     for (let i = 0; i < values.length; i++) {
-        if (!values[i]) columns[i] = undefined
+        if (values[i] === undefined || values[i] === null) columns[i] = undefined
     }
 
     await db.updateItem(
@@ -294,8 +294,15 @@ export async function patchItem(req: Request, res: Response) {
     )
 
     if (favorite !== undefined) {
-        if (favorite) await db.removeFavorite(userId, itemId)
-        else await db.addFavorite(userId, itemId)
+        if (favorite) {
+            try {
+                await db.addFavorite(userId, itemId)
+            } catch (e) {
+                // Item already a favorite
+            }
+        } else {
+            await db.removeFavorite(userId, itemId)
+        }
     }
 
     if (prices !== undefined) {
