@@ -8,6 +8,7 @@ import { Deposit, GroupResponse, Item, ItemResponse, ItemSortMode, ItemsResponse
 import * as convert from '../util/convert'
 import * as getter from '../util/getter'
 import { getAuthorizedGroup } from '../util/getter'
+import { LegalItemColumn } from '../database/client'
 
 export async function getUser(req: Request, res: Response) {
     const db = await database()
@@ -169,6 +170,10 @@ export async function postPurchase(req: Request, res: Response) {
         // Update purchase total
         total += item.purchasePrice.price * item.quantity
 
+        // Update times purchased
+        const timesPurchased = dbItem.timesPurchased + item.quantity
+        await db.updateItem(dbItem.id, ['timespurchased'], [timesPurchased])
+
         return db.addPurchasedItem(
             dbTransaction.id, //
             item.quantity,
@@ -258,7 +263,7 @@ export async function getItems(req: Request, res: Response) {
     const items = await Promise.all(itemPromises)
 
     // Sort by popularity by default and when two items are equal in order
-    items.sort((a, b) => a.timesPurchased - b.timesPurchased)
+    items.sort((a, b) => b.timesPurchased - a.timesPurchased)
     switch (sort) {
         case 'popular':
             break
@@ -340,7 +345,7 @@ export async function patchItem(req: Request, res: Response) {
     const { icon, displayName, visible, favorite, prices } = req.body as PatchItemBody
 
     // Update Items table
-    const columns: (Extract<keyof tableType.Items, string> | undefined)[] = ['iconurl', 'displayname', 'visible']
+    const columns: (LegalItemColumn | undefined)[] = ['iconurl', 'displayname', 'visible']
     const values = [icon, displayName, visible]
     for (let i = 0; i < values.length; i++) {
         if (values[i] === undefined) columns[i] = undefined
