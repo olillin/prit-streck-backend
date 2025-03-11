@@ -11,12 +11,18 @@ services:
     server:
         build:
             context: .
+        secrets:
+            - db-password
         environment:
             NODE_ENV: production
-            PG_PASSWORD_FILE: /run/secrets/db-password
+            PGPASSWORD_FILE: /run/secrets/db-password
+            PGHOST: db
+            PGDATABASE: PritStreck
+        env_file: ".env"
+        restart: always
 
         ports:
-            - 8080:8080
+            - "8080:8080"
 
         # The commented out section below is an example of how to define a PostgreSQL
         # database that your application can use. `depends_on` tells Docker Compose to
@@ -35,6 +41,7 @@ services:
             - db-password
         volumes:
             - db-data:/var/lib/postgresql/data
+            - ./db:/docker-entrypoint-initdb.d
         environment:
             - POSTGRES_DB=PritStreck
             - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
@@ -49,4 +56,4 @@ volumes:
     db-data:
 secrets:
     db-password:
-        file: db/password.txt
+        file: secrets/password.txt
