@@ -3,7 +3,7 @@ import { GroupId, UserId } from 'gammait'
 import jwt from 'jsonwebtoken'
 import { authorizationCode, clientApi, database } from '../config/clients'
 import env from '../config/env'
-import { errors, sendError } from '../errors'
+import { ApiError, sendError, tokenSignError, unexpectedError } from '../errors'
 import { JWT, LoginResponse, ResponseBody } from '../types'
 import * as convert from '../util/convert'
 import { getAuthorizedGroup } from '../util/getter'
@@ -42,53 +42,72 @@ function signJWT(user: LoggedInUser): Promise<JWT> {
 
 export function login(): (req: Request, res: Response) => void {
     return async (req: Request, res: Response) => {
-        // Validate request
-        const code = req.query.code as string | undefined
-        if (!code) {
-            sendError(res, errors.noCode)
-            return
-        }
-
-        // Get token from Gamma
         try {
-            await authorizationCode.generateToken(code)
-        } catch (error: any) {
-            sendError(res, errors.gammaToken(error))
-            return
-        }
+            // Validate request
+            const code = req.query.code as string
 
-        const db = await database()
-        const userInfo = await authorizationCode.userInfo()
-        const id: UserId = userInfo.sub
-        const groups = await clientApi.getGroupsFor(id)
-        const group = getAuthorizedGroup(groups)
-        if (!group) {
-            // User is not in the super group
-            sendError(res, errors.noPermission)
-            return
-        }
-
-        const userExists = await db.userExists(id)
-        if (!userExists) {
-            const groupExists = await db.groupExists(group.id)
-            if (!groupExists) {
-                await db.createGroup(group.id)
+            // Get token from Gamma
+            try {
+                await authorizationCode.generateToken(code)
+            } catch (error) {
+                if (
+                    (error as NodeJS.ErrnoException).code === 'ENOTFOUND' ||
+                    (error as NodeJS.ErrnoException).code === 'ECONNREFUSED'
+                ) {
+                    sendError(res, ApiError.UnreachableGamma)
+                } else if (error instanceof Error) {
+                    sendError(res, ApiError.InvalidAuthorizationCode)
+                } else {
+                    sendError(res, ApiError.GammaToken)
+                }
+                return
             }
-            await db.createUser(id, group.id)
-        }
-        const dbUser = (await db.getUser(id))!
 
-        signJWT({
-            userId: id,
-            groupId: group.id,
-        })
-            .then(token => {
-                const data = convert.toLoginResponse(dbUser, userInfo, group, token)
-                const body: ResponseBody<LoginResponse> = { data }
-                res.json(body)
+            const db = await database()
+            const userInfo = await authorizationCode.userInfo()
+            const id: UserId = userInfo.sub
+            const groups = await clientApi.getGroupsFor(id)
+            const group = getAuthorizedGroup(groups)
+            if (!group) {
+                // User is not in the super group
+                sendError(res, ApiError.NoPermission)
+                return
+            }
+
+            const userExists = await db.userExists(id)
+            if (!userExists) {
+                const groupExists = await db.groupExists(group.id)
+                if (!groupExists) {
+                    await db.createGroup(group.id)
+                }
+                await db.createUser(id, group.id)
+            }
+            const dbUser = (await db.getUser(id))!
+
+            signJWT({
+                userId: id,
+                groupId: group.id,
             })
-            .catch(error => {
-                sendError(res, 500, 'Failed to sign token: ' + String(error))
-            })
+                .then(token => {
+                    const data = convert.toLoginResponse(
+                        dbUser,
+                        userInfo,
+                        group,
+                        token
+                    )
+                    const body: ResponseBody<LoginResponse> = { data }
+                    res.json(body)
+                })
+                .catch(error => {
+                    sendError(res, tokenSignError(String(error)))
+                })
+        } catch (error) {
+            if (
+                (error as NodeJS.ErrnoException).code === 'ENOTFOUND' ||
+                (error as NodeJS.ErrnoException).code === 'ECONNREFUSED'
+            ) {
+                sendError(res, ApiError.UnreachableGamma)
+            }
+        }
     }
 }

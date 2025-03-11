@@ -2,9 +2,11 @@ import express, { NextFunction, Request, Response } from 'express'
 import rateLimit from 'express-rate-limit'
 import { authorizationCode } from './config/clients'
 import env from './config/env'
-import { errors, sendError } from './errors'
+import { sendError, unexpectedError } from './errors'
 import createApiRouter from './routers/api'
 import { login as loginRoute } from './routes/login'
+import * as validate from './middleware/validators'
+import validationErrorHandler from './middleware/validationErrorHandler'
 
 async function main() {
     const app = express()
@@ -23,7 +25,7 @@ async function main() {
         res.redirect(authorizationCode.authorizeUrl())
     })
 
-    app.post('/login', loginRoute())
+    app.post('/login', validate.login(), validationErrorHandler, loginRoute())
 
     app.use(express.json())
     const api = await createApiRouter()
@@ -32,7 +34,7 @@ async function main() {
     app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
         console.error(err)
         console.trace(err)
-        sendError(res, errors.unexpected(err.message))
+        sendError(res, unexpectedError(err.message))
     })
 
     app.listen(parseInt(env.PORT))

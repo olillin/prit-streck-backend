@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { errors, sendError } from '../errors'
+import { ApiError, sendError } from '../errors'
 import jwt from 'jsonwebtoken'
 import env from '../config/env'
 import { LocalJwt } from '../types'
@@ -10,7 +10,7 @@ function validateToken(req: Request, res: Response, next: NextFunction) {
 
     const auth = req.headers.authorization
     if (!auth) {
-        sendError(res, errors.unauthorized)
+        sendError(res, ApiError.Unauthorized)
         return
     }
     const token = auth.split(' ')[1]
@@ -20,20 +20,20 @@ function validateToken(req: Request, res: Response, next: NextFunction) {
         if (verifiedToken.exp) {
             const isExpired = Date.now() >= verifiedToken.exp * 1000
             if (isExpired) {
-                sendError(res, errors.expiredToken)
+                sendError(res, ApiError.ExpiredToken)
                 return
             }
         }
         if (verifiedToken.nbf) {
             const isBefore = Date.now() < verifiedToken.nbf * 1000
             if (isBefore) {
-                sendError(res, errors.nbf)
+                sendError(res, ApiError.BeforeNbf)
                 return
             }
         }
 
         if (!verifiedToken.userId || !verifiedToken.groupId) {
-            sendError(res, errors.invalidToken)
+            sendError(res, ApiError.InvalidToken)
             return
         }
 
@@ -44,7 +44,7 @@ function validateToken(req: Request, res: Response, next: NextFunction) {
         res.locals.jwt = verifiedToken
         next()
     } catch {
-        sendError(res, errors.unauthorized)
+        sendError(res, ApiError.Unauthorized)
     }
 }
 export default validateToken

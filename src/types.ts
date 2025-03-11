@@ -1,6 +1,7 @@
 import { GroupId, UserId } from 'gammait'
 import { JwtPayload } from 'jsonwebtoken'
 import { itemSortModes } from './middleware/validators'
+import { ApiError } from './errors'
 
 // #region Basic types
 export interface Group {
@@ -68,7 +69,7 @@ export interface Deposit extends Transaction<'deposit'> {
 
 // #region Response types
 export type ResponseBody<T> = [T] extends [never]
-    ? { error: ResponseError } //
+    ? { error: ResponseError }
     : { data: T }
 
 export interface ResponseError {
@@ -109,7 +110,7 @@ export interface ItemResponse {
 }
 
 export interface TransactionResponse {
-    transaction: Transaction<any>
+    transaction: Transaction<TransactionType>
     balance: number
 }
 
@@ -119,7 +120,7 @@ export interface PaginatedResponse {
 }
 
 export interface TransactionsResponse extends PaginatedResponse {
-    transactions: Transaction<any>[]
+    transactions: Transaction<TransactionType>[]
 }
 // #endregion Response types
 
@@ -154,3 +155,10 @@ export interface PatchItemBody {
 // #endregion Request types
 
 export type ItemSortMode = (typeof itemSortModes)[number]
+
+export interface ErrorDefinition {
+    code: number
+    message: string
+}
+export type ErrorFunction = (...args: any[]) => ErrorDefinition
+export type ErrorResolvable = ErrorDefinition | ApiError

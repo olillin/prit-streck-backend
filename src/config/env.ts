@@ -10,7 +10,7 @@ export interface EnvironmentVariables {
     GAMMA_REDIRECT_URI: string
     GAMMA_API_AUTHORIZATION: string
 
-    PGPASSWORD: string
+    PGPASSWORD?: string
     PGUSER?: string
     PGHOST?: string
     PGPORT?: string
@@ -30,6 +30,7 @@ export const DEFAULT_ENVIRONMENT: Partial<Concrete<EnvironmentVariables>> = {
     PORT: '8080',
     SUPER_GROUP_ID: PRIT_SUPER_GROUP_ID,
 
+    PGPASSWORD: 'postgres',
     PGUSER: 'postgres',
     PGHOST: 'localhost',
     PGPORT: '5432',
@@ -38,12 +39,25 @@ export const DEFAULT_ENVIRONMENT: Partial<Concrete<EnvironmentVariables>> = {
     JWT_ISSUER: 'PritStreck',
     JWT_EXPIRE_MINUTES: '720',
 }
-export function withDefaults(env: EnvironmentVariables): Concrete<EnvironmentVariables> {
-    return Object.assign(Object.assign({}, DEFAULT_ENVIRONMENT), env) as Concrete<EnvironmentVariables>
+
+export function withDefaults(
+    env: EnvironmentVariables
+): Concrete<EnvironmentVariables> {
+    return Object.assign(
+        Object.assign({}, DEFAULT_ENVIRONMENT),
+        env
+    ) as Concrete<EnvironmentVariables>
 }
 
 // Validate environment
-export const requiredEnvironment: (keyof EnvironmentVariables)[] = ['GAMMA_CLIENT_ID', 'GAMMA_CLIENT_SECRET', 'GAMMA_API_AUTHORIZATION', 'GAMMA_REDIRECT_URI', 'PGPASSWORD', 'JWT_SECRET']
+export const requiredEnvironment: readonly (keyof EnvironmentVariables)[] = [
+    'GAMMA_CLIENT_ID',
+    'GAMMA_CLIENT_SECRET',
+    'GAMMA_API_AUTHORIZATION',
+    'GAMMA_REDIRECT_URI',
+    'JWT_SECRET',
+]
+
 requiredEnvironment.forEach(required => {
     if (!(required in process.env)) {
         console.error(`Missing required environment variable: ${required}`)
@@ -51,5 +65,7 @@ requiredEnvironment.forEach(required => {
     }
 })
 
-const environment: Concrete<EnvironmentVariables> = withDefaults(process.env as unknown as EnvironmentVariables)
+const environment: Concrete<EnvironmentVariables> = withDefaults(
+    process.env as unknown as EnvironmentVariables
+)
 export default environment

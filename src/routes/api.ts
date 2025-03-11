@@ -2,9 +2,28 @@ import { Request, Response } from 'express'
 import { GroupId, UserId } from 'gammait'
 import { clientApi, database } from '../config/clients'
 import * as tableType from '../database/types'
-import { errors, sendError } from '../errors'
+import { ApiError, sendError, unexpectedError } from '../errors'
 import { getGroupId, getUserId } from '../middleware/validateToken'
-import { Deposit, GroupResponse, Item, ItemResponse, ItemSortMode, ItemsResponse, PatchItemBody, PostDepositBody, PostItemBody, PostPurchaseBody, Purchase, ResponseBody, Transaction, TransactionResponse, TransactionsResponse, User, UserResponse } from '../types'
+import {
+    Deposit,
+    GroupResponse,
+    Item,
+    ItemResponse,
+    ItemSortMode,
+    ItemsResponse,
+    PatchItemBody,
+    PostDepositBody,
+    PostItemBody,
+    PostPurchaseBody,
+    Purchase,
+    ResponseBody,
+    Transaction,
+    TransactionResponse,
+    TransactionsResponse,
+    TransactionType,
+    User,
+    UserResponse,
+} from '../types'
 import * as convert from '../util/convert'
 import * as getter from '../util/getter'
 import { getAuthorizedGroup } from '../util/getter'
@@ -55,7 +74,7 @@ export async function getUser(req: Request, res: Response) {
 
     const group = getAuthorizedGroup(groups)
     if (!group) {
-        sendError(res, errors.noPermission)
+        sendError(res, ApiError.NoPermission)
         return
     }
 
@@ -75,7 +94,7 @@ export async function getGroup(req: Request, res: Response) {
     const gammagroups = await clientApi.getGroupsFor(userId)
     const gammaGroup = getAuthorizedGroup(gammagroups)
     if (!gammaGroup) {
-        sendError(res, errors.noPermission)
+        sendError(res, ApiError.NoPermission)
         return
     }
     const group = convert.toGroup(gammaGroup)
@@ -90,7 +109,7 @@ export async function getGroup(req: Request, res: Response) {
     } catch (e) {
         const message = `Failed to get users from gamma: ${e}`
         console.error(message)
-        sendError(res, errors.invalidGamma)
+        sendError(res, ApiError.InvalidGammaResponse)
         return
     }
     const members = await Promise.all(userPromises)
@@ -110,10 +129,12 @@ export async function getTransactions(req: Request, res: Response) {
 
     const dbTransactions = await db.getTransactionsInGroup(groupId)
 
-    const transactions: Transaction<any>[] = (
+    const transactions: Transaction<TransactionType>[] = (
         await Promise.all(
             dbTransactions.map(async dbTransaction => {
-                const dbPurchasedItems = await db.getPurchasedItems(dbTransaction.id)
+                const dbPurchasedItems = await db.getPurchasedItems(
+                    dbTransaction.id
+                )
                 if (dbPurchasedItems.length > 0) {
                     // Transaction is purchase
                     return convert.toPurchase(dbTransaction, dbPurchasedItems)
@@ -124,7 +145,9 @@ export async function getTransactions(req: Request, res: Response) {
                     return convert.toDeposit(dbTransaction, dbDeposit)
                 }
 
-                console.warn(`Transaction ${dbTransaction.id} has no purchased items or deposit`)
+                console.warn(
+                    `Transaction ${dbTransaction.id} has no purchased items or deposit`
+                )
                 return undefined
             })
         )
@@ -146,7 +169,7 @@ export async function postPurchase(req: Request, res: Response) {
 
     const user = await db.getUser(userId)
     if (!user) {
-        sendError(res, errors.userNotExist)
+        sendError(res, ApiError.UserNotExist)
         return
     }
 
@@ -157,7 +180,7 @@ export async function postPurchase(req: Request, res: Response) {
     } catch (e) {
         const message = 'Failed to create purchase transaction, ' + e
         console.error(message)
-        sendError(res, errors.unexpected(message))
+        sendError(res, unexpectedError(message))
         return
     }
 
@@ -190,7 +213,9 @@ export async function postPurchase(req: Request, res: Response) {
     await db.setBalance(userId, balance)
 
     const transaction: Purchase = await getter.purchase(dbTransaction.id)
-    const body: ResponseBody<TransactionResponse> = { data: { transaction, balance } }
+    const body: ResponseBody<TransactionResponse> = {
+        data: { transaction, balance },
+    }
     res.json(body)
 }
 
@@ -204,7 +229,7 @@ export async function postDeposit(req: Request, res: Response) {
 
     const user = await db.getUser(userId)
     if (!user) {
-        sendError(res, errors.userNotExist)
+        sendError(res, ApiError.UserNotExist)
         return
     }
 
@@ -215,7 +240,7 @@ export async function postDeposit(req: Request, res: Response) {
     } catch (e) {
         const message = 'Failed to create deposit transaction, ' + e
         console.error(message)
-        sendError(res, errors.unexpected(message))
+        sendError(res, unexpectedError(message))
         return
     }
 
@@ -225,7 +250,7 @@ export async function postDeposit(req: Request, res: Response) {
     } catch (e) {
         const message = 'Failed to create deposit, ' + e
         console.error(message)
-        sendError(res, errors.unexpected(message))
+        sendError(res, unexpectedError(message))
         return
     }
 
@@ -234,14 +259,17 @@ export async function postDeposit(req: Request, res: Response) {
     await db.setBalance(userId, balance)
 
     const transaction: Deposit = convert.toDeposit(dbTransaction, dbDeposit)
-    const body: ResponseBody<TransactionResponse> = { data: { transaction, balance } }
+    const body: ResponseBody<TransactionResponse> = {
+        data: { transaction, balance },
+    }
     res.json(body)
 }
 
 export async function getItems(req: Request, res: Response) {
     const db = await database()
     const sort: ItemSortMode = req.query.sort as ItemSortMode
-    const visibleOnly: boolean = req.query.visibleOnly === '1' || req.query.visibleOnly === 'true'
+    const visibleOnly: boolean =
+        req.query.visibleOnly === '1' || req.query.visibleOnly === 'true'
 
     const userId: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
@@ -255,7 +283,9 @@ export async function getItems(req: Request, res: Response) {
                 db.isFavorite(userId, dbItem.id),
             ])
             if (prices.length == 0) {
-                throw new Error('Invalid state, item must have at least one item')
+                throw new Error(
+                    'Invalid state, item must have at least one item'
+                )
             }
             const item: Item = convert.toItem(dbItem, prices, favorite)
             return item
@@ -302,7 +332,11 @@ export async function postItem(req: Request, res: Response) {
         : await db.createItem(groupId, displayName)
 
     // Create prices
-    const dbPrices = await Promise.all(prices.map(price => db.addPrice(dbItem.id, price.price, price.displayName)))
+    const dbPrices = await Promise.all(
+        prices.map(price =>
+            db.addPrice(dbItem.id, price.price, price.displayName)
+        )
+    )
 
     // Create
     const favorite = await db.isFavorite(userId, dbItem.id)
@@ -325,7 +359,7 @@ export async function getItem(req: Request, res: Response) {
 
     const groupId = getGroupId(res)
     if (!dbItem || dbItem.groupid !== groupId) {
-        sendError(res, errors.itemNotExist)
+        sendError(res, ApiError.ItemNotExist)
         return
     }
 
@@ -342,10 +376,15 @@ export async function patchItem(req: Request, res: Response) {
     const userId: UserId = getUserId(res)
 
     const itemId = parseInt(req.params.id)
-    const { icon, displayName, visible, favorite, prices } = req.body as PatchItemBody
+    const { icon, displayName, visible, favorite, prices } =
+        req.body as PatchItemBody
 
     // Update Items table
-    const columns: (LegalItemColumn | undefined)[] = ['iconurl', 'displayname', 'visible']
+    const columns: (LegalItemColumn | undefined)[] = [
+        'iconurl',
+        'displayname',
+        'visible',
+    ]
     const values = [icon, displayName, visible]
     for (let i = 0; i < values.length; i++) {
         if (values[i] === undefined) columns[i] = undefined
@@ -361,8 +400,8 @@ export async function patchItem(req: Request, res: Response) {
         if (favorite) {
             try {
                 await db.addFavorite(userId, itemId)
-            } catch (e) {
-                // Item already a favorite
+            } catch {
+                // Item already a favorite, do nothing
             }
         } else {
             await db.removeFavorite(userId, itemId)
@@ -382,7 +421,7 @@ export async function patchItem(req: Request, res: Response) {
     } catch {
         const message = `Failed to get item ${itemId} from database after patch`
         console.error(message)
-        sendError(res, errors.unexpected(message))
+        sendError(res, unexpectedError(message))
         return
     }
 
