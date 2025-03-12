@@ -30,6 +30,10 @@ class DatabaseClient extends Client {
     private async fetchFirst<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
         return (await this.fetchRows<T>(query, ...values))[0]
     }
+
+    private async fetchExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
+        return !!(await this.fetchFirst<T>(query, ...values))!.exists
+    }
     // #endregion Utility
 
     // #region Queries
@@ -48,7 +52,7 @@ class DatabaseClient extends Client {
     }
 
     async groupExists(groupId: GroupId): Promise<boolean> {
-        return !!(await this.fetchFirst<tableType.Exists>(q.GROUP_EXISTS, groupId))!.exists
+        return await this.fetchExists(q.GROUP_EXISTS, groupId)
     }
 
     // Users
@@ -69,7 +73,7 @@ class DatabaseClient extends Client {
     }
 
     async userExists(userId: UserId): Promise<boolean> {
-        return !!(await this.fetchFirst<tableType.Exists>(q.USER_EXISTS, userId))!.exists
+        return await this.fetchExists(q.USER_EXISTS, userId)
     }
 
     // Items
@@ -106,15 +110,15 @@ class DatabaseClient extends Client {
     }
 
     async itemExists(itemId: number): Promise<boolean> {
-        return !!(await this.fetchFirst<tableType.Exists>(q.ITEM_EXISTS, itemId))!.exists
+        return await this.fetchExists(q.ITEM_EXISTS, itemId)
     }
 
     async itemExistsInGroup(itemId: number, groupId: GroupId): Promise<boolean> {
-        return !!(await this.fetchFirst<tableType.Exists>(q.ITEM_EXISTS_IN_GROUP, itemId, groupId))!.exists
+        return await this.fetchExists(q.ITEM_EXISTS_IN_GROUP, itemId, groupId)
     }
 
     async itemNameExistsInGroup(name: string, groupId: GroupId): Promise<boolean> {
-        return !!(await this.fetchFirst<tableType.Exists>(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId))!.exists
+        return await this.fetchExists(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId)
     }
 
     async isItemVisible(itemId: number): Promise<boolean> {
@@ -145,6 +149,10 @@ class DatabaseClient extends Client {
 
     async getTransaction(transactionId: number): Promise<tableType.Transactions | undefined> {
         return await this.fetchFirst(q.GET_TRANSACTION, transactionId)
+    }
+
+    async transactionExistsInGroup(transactionId: number, groupId: GroupId): Promise<boolean> {
+        return await this.fetchExists(q.TRANSACTION_EXISTS_IN_GROUP, transactionId, groupId)
     }
 
     async countTransactionsInGroup(groupId: GroupId): Promise<number> {
@@ -203,7 +211,7 @@ class DatabaseClient extends Client {
     }
 
     async hasBeenPurchased(itemId: number): Promise<boolean> {
-        return !!(await this.fetchFirst<tableType.Exists>(q.HAS_BEEN_PURCHASED, itemId))!.exists
+        return await this.fetchExists(q.HAS_BEEN_PURCHASED, itemId)
     }
 
     // Favorites
@@ -218,7 +226,7 @@ class DatabaseClient extends Client {
     }
 
     async isFavorite(userId: UserId, itemId: number): Promise<boolean> {
-        return !!(await this.fetchFirst<tableType.Exists>(q.FAVORITE_ITEM_EXISTS, userId, itemId))!.exists
+        return await this.fetchExists(q.FAVORITE_ITEM_EXISTS, userId, itemId)
     }
     // #endregion Queries
 }
