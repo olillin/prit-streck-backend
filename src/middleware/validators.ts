@@ -1,15 +1,14 @@
 import { body, Meta, oneOf, param, query } from 'express-validator'
 import { GroupId, UserId } from 'gammait'
 import { database } from '../config/clients'
-import { errors } from '../errors'
 import { verifyToken } from './validateToken'
-import * as getter from '../util/getter'
+import { ApiError } from '../errors'
 
 export async function checkUserExists(value: string): Promise<void> {
     const db = await database()
     const exists = await db.userExists(value as UserId)
     if (!exists) {
-        throw new Error('User does not exist')
+        throw ApiError.UserNotExist
     }
 }
 
@@ -21,36 +20,56 @@ function getGroupId(meta: Meta): GroupId {
     return groupId
 }
 
-export async function checkItemExists(value: string, meta: Meta): Promise<void> {
+export async function checkItemExists(
+    value: string,
+    meta: Meta
+): Promise<void> {
     const db = await database()
     const groupId = getGroupId(meta)
     const exists = await db.itemExistsInGroup(parseInt(value), groupId)
     if (!exists) {
-        throw new Error('Item does not exist')
+        throw ApiError.ItemNotExist
     }
 }
 
-export async function checkItemVisible(value: string, meta: Meta): Promise<void> {
+export async function checkTransactionExists(
+    value: string,
+    meta: Meta
+): Promise<void> {
+    const db = await database()
+    const groupId = getGroupId(meta)
+    const exists = await db.transactionExistsInGroup(parseInt(value), groupId)
+    if (!exists) {
+        throw ApiError.TransactionNotExist
+    }
+}
+
+export async function checkPurchasedItemVisible(value: string): Promise<void> {
     const db = await database()
     const visible = await db.isItemVisible(parseInt(value))
     if (!visible) {
-        throw new Error('Item is not visible')
+        throw ApiError.PurchaseInvisible
     }
 }
 
-export async function checkDisplayNameUnique(value: string, meta: Meta): Promise<void> {
+export async function checkDisplayNameUnique(
+    value: string,
+    meta: Meta
+): Promise<void> {
     const db = await database()
     const groupId = getGroupId(meta)
     const nameExists = await db.itemNameExistsInGroup(value, groupId)
     if (nameExists) {
-        throw new Error(errors.displayNameNotUnique[1])
+        throw ApiError.DisplayNameNotUnique
     }
 }
 
 // Validation chains
 export const login = () => [
-    query('code').isHexadecimal(),
-    //
+    oneOf([
+        query('code').exists().withMessage(ApiError.NoAuthorizationCode),
+        body('code').exists().withMessage(ApiError.NoAuthorizationCode),
+    ]),
 ]
 
 export const getUser = () => []
@@ -58,64 +77,145 @@ export const getUser = () => []
 export const getGroup = () => []
 
 export const getTransactions = () => [
-    query('limit').default(50).isInt({ min: 1, max: 100 }),
-    query('offset').default(0).isInt({ min: 0 }),
-    //
+    query('limit')
+        .default(50)
+        .isInt({ min: 1, max: 100 })
+        .withMessage(ApiError.InvalidLimit),
+    query('offset')
+        .default(0)
+        .isInt({ min: 0 })
+        .withMessage(ApiError.InvalidOffset),
+]
+
+export const getTransaction = () => [
+    param('id')
+        .exists()
+        .isInt()
+        .withMessage(ApiError.InvalidTransactionId)
+        .bail()
+        .custom(checkTransactionExists),
 ]
 
 export const postPurchase = () => [
-    body('userId').isString().trim().isUUID().bail().custom(checkUserExists),
-    body('items').isArray({ min: 1 }),
-    body('items.*.id').isInt().bail().custom(checkItemExists).bail().custom(checkItemVisible),
-    body('items.*.quantity').isInt({ min: 1 }),
-    body('items.*.purchasePrice').isObject(),
-    body('items.*.purchasePrice.price').isDecimal(),
-    body('items.*.purchasePrice.displayName').isString().bail().trim().notEmpty().escape(),
-    //
+    body('userId')
+        .exists()
+        .isString()
+        .trim()
+        .isUUID()
+        .withMessage(ApiError.InvalidUserId)
+        .bail()
+        .custom(checkUserExists),
+    body('items')
+        .exists()
+        .isArray({ min: 1 })
+        .withMessage(ApiError.PurchaseNothing),
+    body('items.*.id')
+        .exists()
+        .isInt()
+        .withMessage(ApiError.InvalidItemId)
+        .bail()
+        .custom(checkItemExists)
+        .bail()
+        .custom(checkPurchasedItemVisible)
+        .withMessage(ApiError.PurchaseInvisible),
+    body('items.*.quantity')
+        .exists()
+        .isInt({ min: 1 })
+        .withMessage(ApiError.ItemCount),
+    body('items.*.purchasePrice').exists().isObject(),
+    body('items.*.purchasePrice.price').exists().isDecimal(),
+    body('items.*.purchasePrice.displayName').exists().isString().trim(),
 ]
 
 export const postDeposit = () => [
-    body('userId').isString().trim().isUUID().bail().custom(checkUserExists),
-    body('total').isDecimal(),
-    //
+    body('userId')
+        .exists()
+        .isString()
+        .trim()
+        .isUUID()
+        .withMessage(ApiError.InvalidUserId)
+        .bail()
+        .custom(checkUserExists),
+    body('total').exists().isDecimal().withMessage(ApiError.InvalidTotal),
 ]
 
-export const itemSortModes = <const>['popular', 'cheap', 'expensive', 'new', 'old', 'name_a2z', 'name_z2a']
+export const itemSortModes = <const>[
+    'popular',
+    'cheap',
+    'expensive',
+    'new',
+    'old',
+    'name_a2z',
+    'name_z2a',
+]
 export const getItems = () => [
-    query('sort').default('popular').isString().trim().isIn(itemSortModes),
-    query('visibleOnly').default(true).isBoolean({}),
-    //
+    query('sort')
+        .default('popular')
+        .isString()
+        .trim()
+        .isIn(itemSortModes)
+        .withMessage(ApiError.UnknownSortMode),
+    query('visibleOnly').default(true).isBoolean(),
 ]
 
 export const postItem = () => [
-    body('displayName').isString().bail().trim().notEmpty().bail().escape().custom(checkDisplayNameUnique),
-    body('prices').isArray(),
-    body('prices.*.price').isDecimal(),
-    body('prices.*.displayName').isString().bail().trim().notEmpty().escape(),
+    body('displayName')
+        .exists()
+        .isString()
+        .bail()
+        .trim()
+        .notEmpty()
+        .bail()
+        .custom(checkDisplayNameUnique),
+    body('prices')
+        .exists()
+        .isArray({ min: 1 })
+        .withMessage(ApiError.MissingPrices),
+    body('prices.*.price').exists().isDecimal(),
+    body('prices.*.displayName').exists().isString().bail().trim().notEmpty(),
     body('icon').optional().isURL(),
-    //
 ]
 
 export const getItem = () => [
-    param('id').isInt().bail().custom(checkItemExists),
-    //
+    param('id')
+        .exists()
+        .isInt()
+        .withMessage(ApiError.InvalidItemId)
+        .bail()
+        .custom(checkItemExists),
 ]
 
 export const patchItem = () => [
-    param('id').isInt().bail().custom(checkItemExists),
+    param('id')
+        .exists()
+        .isInt()
+        .withMessage(ApiError.InvalidItemId)
+        .bail()
+        .custom(checkItemExists),
     oneOf([
-        body('icon').optional().isString().bail().trim().escape().isURL(), //
-        body('icon').optional().exists(),
+        body('icon')
+            .optional()
+            .isString()
+            .withMessage(ApiError.InvalidUrl)
+            .trim()
+            .isURL()
+            .withMessage(ApiError.InvalidUrl),
+        body('icon').not().exists(),
     ]),
-    body('displayName').optional().isString().trim().notEmpty().bail().escape().custom(checkDisplayNameUnique),
-    body('prices').optional().isArray(),
+    body('displayName')
+        .optional()
+        .isString()
+        .trim()
+        .custom(checkDisplayNameUnique),
+    body('prices')
+        .optional()
+        .isArray({ min: 1 })
+        .withMessage(ApiError.MissingPrices),
     body('prices.*.price').isDecimal(),
-    body('prices.*.displayName').isString().trim().notEmpty().escape(),
+    body('prices.*.displayName').isString().trim().notEmpty(),
     body('visible').optional().isBoolean(),
-    //
 ]
 
 export const deleteItem = () => [
-    param('id').isInt().bail().custom(checkItemExists),
-    //
+    param('id').exists().isInt().bail().custom(checkItemExists),
 ]

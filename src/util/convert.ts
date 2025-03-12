@@ -1,12 +1,24 @@
-import { Deposit, Group, JWT, LoginResponse, Purchase, PurchasedItem, Transaction, TransactionType, UserResponse } from '../types'
+import {
+    Deposit,
+    Group,
+    JWT,
+    LoginResponse,
+    Purchase,
+    PurchasedItem,
+    Transaction,
+    TransactionType,
+    UserResponse,
+} from '../types'
 import * as tableType from '../database/types'
 import * as gamma from 'gammait'
 import { groupAvatarUrl, userAvatarUrl } from 'gammait/urls'
-import { UserId } from 'gammait'
-import { database } from '../config/clients'
 import { Item, User } from '../types'
 
-export function toItem(item: tableType.Items, prices: tableType.Prices[], favorite: boolean): Item {
+export function toItem(
+    item: tableType.Items,
+    prices: tableType.Prices[],
+    favorite: boolean
+): Item {
     return {
         id: item.id,
         addedTime: item.addedtime.getTime(),
@@ -24,9 +36,12 @@ export function toItem(item: tableType.Items, prices: tableType.Prices[], favori
 
 type GammaUser = gamma.User | gamma.UserInfo
 function isUserInfo(gammaUser: GammaUser): gammaUser is gamma.UserInfo {
-    return gammaUser.hasOwnProperty('sub')
+    return 'sub' in gammaUser
 }
-export function toUser(dbUser: tableType.Users, gammaUser: gamma.User | gamma.UserInfo): User {
+export function toUser(
+    dbUser: tableType.Users,
+    gammaUser: gamma.User | gamma.UserInfo
+): User {
     return {
         balance: dbUser.balance,
         ...(isUserInfo(gammaUser)
@@ -55,18 +70,35 @@ export function toGroup(gammaGroup: gamma.Group | gamma.GroupWithPost): Group {
     }
 }
 
-export function toUserResponse(dbUser: tableType.Users, gammaUser: GammaUser, gammaGroup: gamma.Group): UserResponse {
+export function toUserResponse(
+    dbUser: tableType.Users,
+    gammaUser: GammaUser,
+    gammaGroup: gamma.Group
+): UserResponse {
     return {
         user: toUser(dbUser, gammaUser),
         group: toGroup(gammaGroup),
     }
 }
 
-export function toLoginResponse(dbUser: tableType.Users, gammaUser: GammaUser, gammaGroup: gamma.Group, token: JWT): LoginResponse {
-    return { token, ...toUserResponse(dbUser, gammaUser, gammaGroup) }
+export function toLoginResponse(
+    dbUser: tableType.Users,
+    gammaUser: GammaUser,
+    gammaGroup: gamma.Group,
+    token: JWT
+): LoginResponse {
+    return {
+        access_token: token.access_token,
+        token_type: 'Bearer',
+        expires_in: token.expires_in,
+        ...toUserResponse(dbUser, gammaUser, gammaGroup),
+    }
 }
 
-export function toTransaction<T extends TransactionType>(dbTransaction: tableType.Transactions, type: T): Transaction<T> {
+export function toTransaction<T extends TransactionType>(
+    dbTransaction: tableType.Transactions,
+    type: T
+): Transaction<T> {
     return {
         type,
         id: dbTransaction.id,
@@ -76,7 +108,9 @@ export function toTransaction<T extends TransactionType>(dbTransaction: tableTyp
     }
 }
 
-export function toPurchasedItem(dbPurchasedItem: tableType.PurchasedItems): PurchasedItem {
+export function toPurchasedItem(
+    dbPurchasedItem: tableType.PurchasedItems
+): PurchasedItem {
     return {
         item: {
             displayName: dbPurchasedItem.displayname,
@@ -91,14 +125,20 @@ export function toPurchasedItem(dbPurchasedItem: tableType.PurchasedItems): Purc
     }
 }
 
-export function toPurchase(dbTransaction: tableType.Transactions, dbPurchasedItems: tableType.PurchasedItems[]): Purchase {
+export function toPurchase(
+    dbTransaction: tableType.Transactions,
+    dbPurchasedItems: tableType.PurchasedItems[]
+): Purchase {
     return {
         items: dbPurchasedItems.map(toPurchasedItem),
         ...toTransaction(dbTransaction, 'purchase'),
     }
 }
 
-export function toDeposit(dbTransaction: tableType.Transactions, dbDeposit: tableType.Deposits): Deposit {
+export function toDeposit(
+    dbTransaction: tableType.Transactions,
+    dbDeposit: tableType.Deposits
+): Deposit {
     return {
         total: dbDeposit.total,
         ...toTransaction(dbTransaction, 'deposit'),
