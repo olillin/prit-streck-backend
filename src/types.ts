@@ -111,6 +111,9 @@ export interface ItemResponse {
 
 export interface TransactionResponse {
     transaction: Transaction<TransactionType>
+}
+
+export interface CreatedTransactionResponse extends TransactionResponse {
     balance: number
 }
 

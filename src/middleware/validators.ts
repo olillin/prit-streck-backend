@@ -32,6 +32,18 @@ export async function checkItemExists(
     }
 }
 
+export async function checkTransactionExists(
+    value: string,
+    meta: Meta
+): Promise<void> {
+    const db = await database()
+    const groupId = getGroupId(meta)
+    const exists = await db.transactionExistsInGroup(parseInt(value), groupId)
+    if (!exists) {
+        throw ApiError.TransactionNotExist
+    }
+}
+
 export async function checkPurchasedItemVisible(value: string): Promise<void> {
     const db = await database()
     const visible = await db.isItemVisible(parseInt(value))
@@ -70,6 +82,10 @@ export const getTransactions = () => [
         .default(0)
         .isInt({ min: 0 })
         .withMessage(ApiError.InvalidOffset),
+]
+
+export const getTransaction = () => [
+    param('id').exists().isInt().withMessage(ApiError.InvalidTransactionId).bail().custom(checkTransactionExists)
 ]
 
 export const postPurchase = () => [

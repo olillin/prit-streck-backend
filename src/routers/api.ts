@@ -15,11 +15,12 @@ async function createApiRouter(): Promise<Router> {
         ['get', '/user', 'getUser'],
         ['get', '/group', 'getGroup'],
         ['get', '/group/transactions', 'getTransactions'],
+        ['get', '/group/transaction/:id', 'getTransaction'],
         ['post', '/group/purchase', 'postPurchase'],
         ['post', '/group/deposit', 'postDeposit'],
         ['get', '/group/item', 'getItems'],
-        ['post', '/group/item', 'postItem'],
         ['get', '/group/item/:id', 'getItem'],
+        ['post', '/group/item', 'postItem'],
         ['patch', '/group/item/:id', 'patchItem'],
         ['delete', '/group/item/:id', 'deleteItem'],
     ]

@@ -1,6 +1,6 @@
 import { GroupWithPost, UserId } from 'gammait'
 import { database } from '../config/clients'
-import { Deposit, Item, Purchase } from '../types'
+import { Deposit, Item, Purchase, Transaction, TransactionType } from '../types'
 import { toDeposit, toItem, toPurchase } from './convert'
 import environment from '../config/env'
 
@@ -41,6 +41,19 @@ export async function deposit(depositId: number): Promise<Deposit> {
     if (!deposit) throw new Error('Deposit does not exist')
 
     return toDeposit(transaction, deposit)
+}
+
+export async function transaction(
+    transactionId: number
+): Promise<Transaction<TransactionType>> {
+    try {
+        return await purchase(transactionId)
+    } catch {}
+    try {
+        return await deposit(transactionId)
+    } catch {}
+
+    throw new Error('Invalid transaction, is not purchase or deposit')
 }
 // #endregion Database getters
 

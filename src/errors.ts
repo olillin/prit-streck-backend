@@ -8,6 +8,8 @@ export enum ApiError {
     UserNotExist,
     InvalidItemId,
     ItemNotExist,
+    InvalidTransactionId,
+    TransactionNotExist,
     InvalidUrl,
 
     // Authorization
@@ -55,6 +57,8 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
     [ApiError.UserNotExist]: err(404, 'User does not exist'),
     [ApiError.InvalidItemId]: err(400, 'Invalid item ID'),
     [ApiError.ItemNotExist]: err(404, 'Item does not exist'),
+    [ApiError.InvalidTransactionId]: err(400, 'Invalid transaction ID'),
+    [ApiError.TransactionNotExist]: err(404, 'Transaction does not exist'),
     [ApiError.InvalidUrl]: err(400, 'URL is invalid'),
 
     // Authorization
@@ -66,38 +70,23 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
 
     // Gamma
     [ApiError.GammaToken]: err(502, 'Failed to get token from Gamma'),
-    [ApiError.InvalidGammaResponse]: err(
-        502,
-        'Received an invalid response from Gamma'
-    ),
+    [ApiError.InvalidGammaResponse]: err(502, 'Received an invalid response from Gamma'),
     [ApiError.UnreachableGamma]: err(504, 'Unable to reach Gamma'),
 
     // Login
     [ApiError.NoAuthorizationCode]: err(401, 'No authorization code provided'),
-    [ApiError.InvalidAuthorizationCode]: err(
-        401,
-        'Authorization code is invalid'
-    ),
+    [ApiError.InvalidAuthorizationCode]: err(401, 'Authorization code is invalid'),
 
     // Create purchase
-    [ApiError.ItemCount]: err(
-        400,
-        'Item count must be an integer greater than 0'
-    ),
+    [ApiError.ItemCount]: err(400, 'Item count must be an integer greater than 0'),
     [ApiError.PurchaseNothing]: err(400, 'Must purchase at least one item'),
-    [ApiError.PurchaseInvisible]: err(
-        403,
-        'Cannot purchase a non-visible item'
-    ),
+    [ApiError.PurchaseInvisible]: err(403, 'Cannot purchase a non-visible item'),
 
     // Create deposit
     [ApiError.InvalidTotal]: err(400, 'Total must be a number'),
 
     // List purchase
-    [ApiError.InvalidLimit]: err(
-        400,
-        'Limit must be an integer between 1 and 100'
-    ),
+    [ApiError.InvalidLimit]: err(400, 'Limit must be an integer between 1 and 100'),
     [ApiError.InvalidOffset]: err(400, 'Offset must be a positive integer'),
 
     // Create/modify Item
@@ -122,25 +111,16 @@ export function getErrorMessage(error: ApiError): string {
 }
 
 // #region Parameterized Errors
-export function missingRequiredPropertyError(
-    name: string,
-    location: Location
-): ErrorDefinition {
+export function missingRequiredPropertyError(name: string, location: Location): ErrorDefinition {
     return err(400, `Missing required property '${name}' in ${location}`)
 }
 
-export function invalidPropertyError(
-    name: string,
-    location: Location
-): ErrorDefinition {
+export function invalidPropertyError(name: string, location: Location): ErrorDefinition {
     return err(400, `Property '${name}' is invalid in ${location}`)
 }
 
 export function unexpectedError(details: string) {
-    return err(
-        500,
-        `An unexpected issue occured. Please create an issue on GitHub. Details: ${details}`
-    )
+    return err(500, `An unexpected issue occured. Please create an issue on GitHub. Details: ${details}`)
 }
 
 export function tokenSignError(details: string): ErrorDefinition {
@@ -159,11 +139,7 @@ export function resolveError(error: ErrorResolvable): ErrorDefinition {
 
 export function sendError(res: Response, error: ErrorResolvable): void
 export function sendError(res: Response, code: number, message: string): void
-export function sendError(
-    res: Response,
-    a: number | ErrorResolvable,
-    b?: string
-): void {
+export function sendError(res: Response, a: number | ErrorResolvable, b?: string): void {
     if (res.headersSent) return
 
     let code: number

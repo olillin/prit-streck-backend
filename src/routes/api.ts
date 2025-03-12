@@ -18,11 +18,12 @@ import {
     Purchase,
     ResponseBody,
     Transaction,
-    TransactionResponse,
+    CreatedTransactionResponse,
     TransactionsResponse,
     TransactionType,
     User,
     UserResponse,
+    TransactionResponse,
 } from '../types'
 import * as convert from '../util/convert'
 import * as getter from '../util/getter'
@@ -159,6 +160,13 @@ export async function getTransactions(req: Request, res: Response) {
     // TODO: Paginate transactions
 }
 
+export async function getTransaction(req: Request, res: Response) {
+    const transactionId = parseInt(req.params.id)
+    const transaction = await getter.transaction(transactionId)
+    const body: ResponseBody<TransactionResponse> = { data: { transaction } }
+    res.json(body)
+}
+
 export async function postPurchase(req: Request, res: Response) {
     const db = await database()
 
@@ -213,10 +221,12 @@ export async function postPurchase(req: Request, res: Response) {
     await db.setBalance(userId, balance)
 
     const transaction: Purchase = await getter.purchase(dbTransaction.id)
-    const body: ResponseBody<TransactionResponse> = {
+    const body: ResponseBody<CreatedTransactionResponse> = {
         data: { transaction, balance },
     }
-    res.json(body)
+
+    const resourceUri = req.baseUrl + `/group/transaction/${transaction.id}`
+    res.status(201).set('Location', resourceUri).json(body)
 }
 
 export async function postDeposit(req: Request, res: Response) {
@@ -259,10 +269,12 @@ export async function postDeposit(req: Request, res: Response) {
     await db.setBalance(userId, balance)
 
     const transaction: Deposit = convert.toDeposit(dbTransaction, dbDeposit)
-    const body: ResponseBody<TransactionResponse> = {
+    const body: ResponseBody<CreatedTransactionResponse> = {
         data: { transaction, balance },
     }
-    res.json(body)
+
+    const resourceUri = req.baseUrl + `/group/transaction/${transaction.id}`
+    res.status(201).set('Location', resourceUri).json(body)
 }
 
 export async function getItems(req: Request, res: Response) {
@@ -343,7 +355,9 @@ export async function postItem(req: Request, res: Response) {
 
     const item = convert.toItem(dbItem, dbPrices, favorite)
     const body: ResponseBody<ItemResponse> = { data: { item } }
-    res.json(body)
+
+    const resourceUri = req.baseUrl + `/group/item/${item.id}`
+    res.status(201).set('Location', resourceUri).json(body)
 }
 
 export async function getItem(req: Request, res: Response) {
@@ -437,5 +451,5 @@ export async function deleteItem(req: Request, res: Response) {
     const itemId = parseInt(req.params.id)
 
     await db.deleteItem(itemId)
-    res.end()
+    res.status(204).end()
 }
