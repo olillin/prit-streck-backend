@@ -88,8 +88,8 @@ export interface GroupResponse {
 }
 
 export interface JWT {
-    token: string
-    expireMinutes: number
+    access_token: string
+    expires_in: number
 }
 
 export interface LocalJwt extends JwtPayload {
@@ -97,8 +97,8 @@ export interface LocalJwt extends JwtPayload {
     groupId: GroupId
 }
 
-export interface LoginResponse extends UserResponse {
-    token: JWT
+export interface LoginResponse extends UserResponse, JWT {
+    token_type: string
 }
 
 export interface ItemsResponse {

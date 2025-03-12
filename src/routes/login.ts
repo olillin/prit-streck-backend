@@ -15,8 +15,8 @@ interface LoggedInUser {
 
 function signJWT(user: LoggedInUser): Promise<JWT> {
     return new Promise((resolve, reject) => {
-        const expireMinutes = parseFloat(env.JWT_EXPIRE_MINUTES)
-        const expireSeconds = expireMinutes * 60 * 1000
+        const expireSeconds = parseFloat(env.JWT_EXPIRES_IN)
+        const expireMs = expireSeconds * 1000
 
         console.log(`Attempting to sign token for ${user.userId}`)
 
@@ -27,11 +27,15 @@ function signJWT(user: LoggedInUser): Promise<JWT> {
                 {
                     issuer: env.JWT_ISSUER,
                     algorithm: 'HS256',
-                    expiresIn: expireSeconds,
+                    expiresIn: expireMs,
                 },
                 (error, token) => {
                     if (error) reject(error)
-                    else if (token) resolve({ token, expireMinutes })
+                    else if (token)
+                        resolve({
+                            access_token: token,
+                            expires_in: expireSeconds,
+                        })
                 }
             )
         } catch (error) {
@@ -44,7 +48,7 @@ export function login(): (req: Request, res: Response) => void {
     return async (req: Request, res: Response) => {
         try {
             // Validate request
-            const code = req.query.code as string
+            const code = (req.query.code ?? req.body.code) as string
 
             // Get token from Gamma
             try {
@@ -89,13 +93,12 @@ export function login(): (req: Request, res: Response) => void {
                 groupId: group.id,
             })
                 .then(token => {
-                    const data = convert.toLoginResponse(
+                    const body = convert.toLoginResponse(
                         dbUser,
                         userInfo,
                         group,
                         token
                     )
-                    const body: ResponseBody<LoginResponse> = { data }
                     res.json(body)
                 })
                 .catch(error => {

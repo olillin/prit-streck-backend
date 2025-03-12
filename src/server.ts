@@ -21,13 +21,15 @@ async function main() {
     })
     app.use(limiter)
 
+    app.use(express.json())
+    app.use(express.urlencoded({ extended: false }))
+
     app.get('/authorize', (req, res) => {
         res.redirect(authorizationCode.authorizeUrl())
     })
 
     app.post('/login', validate.login(), validationErrorHandler, loginRoute())
 
-    app.use(express.json())
     const api = await createApiRouter()
     app.use('/api', api)
 

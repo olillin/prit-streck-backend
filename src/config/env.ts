@@ -18,7 +18,7 @@ export interface EnvironmentVariables {
 
     JWT_SECRET: string
     JWT_ISSUER?: string
-    JWT_EXPIRE_MINUTES?: string
+    JWT_EXPIRES_IN?: string
 }
 
 // Remove 'optional' attributes from a type's properties
@@ -37,7 +37,7 @@ export const DEFAULT_ENVIRONMENT: Partial<Concrete<EnvironmentVariables>> = {
     PGDATABASE: 'PritStreck',
 
     JWT_ISSUER: 'PritStreck',
-    JWT_EXPIRE_MINUTES: '720',
+    JWT_EXPIRES_IN: '43200',
 }
 
 export function withDefaults(

@@ -46,13 +46,15 @@ export async function deposit(depositId: number): Promise<Deposit> {
 export async function transaction(
     transactionId: number
 ): Promise<Transaction<TransactionType>> {
-    try {
-        return await purchase(transactionId)
-    } catch {}
-    try {
-        return await deposit(transactionId)
-    } catch {}
+    const functions = [purchase, transaction]
 
+    for (const func of functions) {
+        try {
+            return await func(transactionId)
+        } catch {
+            continue
+        }
+    }
     throw new Error('Invalid transaction, is not purchase or deposit')
 }
 // #endregion Database getters

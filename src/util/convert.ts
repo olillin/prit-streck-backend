@@ -87,7 +87,12 @@ export function toLoginResponse(
     gammaGroup: gamma.Group,
     token: JWT
 ): LoginResponse {
-    return { token, ...toUserResponse(dbUser, gammaUser, gammaGroup) }
+    return {
+        access_token: token.access_token,
+        token_type: 'Bearer',
+        expires_in: token.expires_in,
+        ...toUserResponse(dbUser, gammaUser, gammaGroup),
+    }
 }
 
 export function toTransaction<T extends TransactionType>(

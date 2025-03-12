@@ -66,7 +66,10 @@ export async function checkDisplayNameUnique(
 
 // Validation chains
 export const login = () => [
-    query('code').exists().withMessage(ApiError.NoAuthorizationCode),
+    oneOf([
+        query('code').exists().withMessage(ApiError.NoAuthorizationCode),
+        body('code').exists().withMessage(ApiError.NoAuthorizationCode),
+    ]),
 ]
 
 export const getUser = () => []
@@ -85,7 +88,12 @@ export const getTransactions = () => [
 ]
 
 export const getTransaction = () => [
-    param('id').exists().isInt().withMessage(ApiError.InvalidTransactionId).bail().custom(checkTransactionExists)
+    param('id')
+        .exists()
+        .isInt()
+        .withMessage(ApiError.InvalidTransactionId)
+        .bail()
+        .custom(checkTransactionExists),
 ]
 
 export const postPurchase = () => [
