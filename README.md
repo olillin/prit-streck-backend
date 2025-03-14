@@ -107,3 +107,5 @@ used. They can be found at:
 
 The source for the frontend by [Erik Persson](https://github.com/erikpersson0884)
 can be found at <https://github.com/erikpersson0884/strecklista>
+
+The [API documentation](docs/API.md).
