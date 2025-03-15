@@ -1,3 +1,9 @@
+secrets/*
+!secrets/.gitkeep
+
+# IDE-files
+.idea/discord.xml
+
 # Logs
 logs
 *.log
