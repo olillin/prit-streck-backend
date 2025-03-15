@@ -1,70 +1,77 @@
-CREATE TABLE Groups (
-    GammaId VARCHAR(255) UNIQUE NOT NULL,
-    PRIMARY KEY (GammaId)
+-- Types
+
+
+-- Tables
+CREATE TABLE groups (
+    id SERIAL NOT NULL,
+    gamma_id VARCHAR(16) UNIQUE NOT NULL,
+    PRIMARY KEY (id)
 );
 
-CREATE TABLE Users (
-    GammaId VARCHAR(255) UNIQUE NOT NULL,
-    GroupId VARCHAR(255) NOT NULL,
-    Balance FLOAT NOT NULL DEFAULT 0.0,
-    PRIMARY KEY (GammaId)
+CREATE TABLE users (
+    id SERIAL NOT NULL,
+    gamma_id VARCHAR(16) UNIQUE NOT NULL,
+    group_id INT NOT NULL,
+    balance NUMERIC(7,2) NOT NULL DEFAULT 0.0,
+    PRIMARY KEY (id),
+    FOREIGN KEY (group_id) REFERENCES groups(id)
 );
 
-CREATE TABLE Items (
-    Id SERIAL NOT NULL,
-    GroupId VARCHAR(255) NOT NULL,
-    DisplayName VARCHAR(32) NOT NULL,
-    IconUrl VARCHAR(255),
-    AddedTime TIMESTAMP NOT NULL DEFAULT NOW(),
-    TimesPurchased INT NOT NULL DEFAULT 0,
-    Visible BOOLEAN NOT NULL DEFAULT 't',
-    UNIQUE (GroupId, DisplayName),
-    PRIMARY KEY (Id),
-    FOREIGN KEY (GroupId) REFERENCES Groups(GammaId)
+CREATE TABLE items (
+    id SERIAL NOT NULL,
+    group_id INT NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    icon_url VARCHAR(500),
+    created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    times_purchased INT NOT NULL DEFAULT 0,
+    visible BOOLEAN NOT NULL DEFAULT 't',
+    UNIQUE (group_id, display_name),
+    PRIMARY KEY (id),
+    FOREIGN KEY (group_id) REFERENCES groups(id)
 );
 
-CREATE TABLE Prices (
-    ItemId SERIAL NOT NULL,
-    Price FLOAT NOT NULL,
-    DisplayName VARCHAR(32) NOT NULL,
-    PRIMARY KEY (ItemId, DisplayName),
-    FOREIGN KEY (ItemId) REFERENCES Items(Id) ON DELETE CASCADE
+CREATE TABLE prices (
+    item_id INT NOT NULL,
+    price NUMERIC(7,2) NOT NULL,
+    display_name VARCHAR(30) NOT NULL,
+    PRIMARY KEY (item_id, display_name),
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
 );
 
-CREATE TABLE Transactions (
-    Id SERIAL UNIQUE NOT NULL,
-    GroupId VARCHAR(255) NOT NULL,
-    CreatedBy VARCHAR(255) NOT NULL,
-    CreatedFor VARCHAR(255) NOT NULL,
-    CreatedTime TIMESTAMP NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (Id),
-    FOREIGN KEY (CreatedBy) REFERENCES Users(GammaId),
-    FOREIGN KEY (CreatedFor) REFERENCES Users(GammaId),
-    FOREIGN KEY (GroupId) REFERENCES Groups(GammaId)
+CREATE TABLE transactions (
+    id SERIAL NOT NULL,
+    group_id INT NOT NULL,
+    created_by INT NOT NULL,
+    created_for INT NOT NULL,
+    created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (created_for) REFERENCES users(id),
+    FOREIGN KEY (group_id) REFERENCES groups(id)
 );
 
-CREATE TABLE PurchasedItems (
-    TransactionId SERIAL NOT NULL,
-    Quantity INT NOT NULL,
-    PurchasePrice FLOAT NOT NULL,
-    PurchasePriceName VARCHAR(32) NOT NULL,
-    ItemId SERIAL,
-    DisplayName VARCHAR(32) NOT NULL,
-    IconUrl VARCHAR(255),
-    FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE,
-    FOREIGN KEY (ItemId) REFERENCES Items(Id) ON DELETE SET NULL
+CREATE TABLE purchased_items (
+    transaction_id INT NOT NULL,
+    item_id INT,
+    display_name VARCHAR(100) NOT NULL,
+    icon_url VARCHAR(500),
+    purchase_price NUMERIC(7,2) NOT NULL,
+    purchase_price_name VARCHAR(30) NOT NULL,
+    quantity INT NOT NULL,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL
 );
 
-CREATE TABLE Deposits (
-    TransactionId SERIAL NOT NULL,
-    Total FLOAT NOT NULL,
-    FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE
+CREATE TABLE deposits (
+    transaction_id INT NOT NULL,
+    total NUMERIC(7,2) NOT NULL,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
 );
 
-CREATE TABLE FavoriteItems (
-    UserId VARCHAR(255) UNIQUE NOT NULL,
-    ItemId SERIAL NOT NULL,
-    UNIQUE (UserId, ItemId),
-    FOREIGN KEY (UserId) REFERENCES Users(GammaId),
-    FOREIGN KEY (ItemId) REFERENCES Items(Id) ON DELETE CASCADE
+CREATE TABLE favorite_items (
+    user_id INT NOT NULL,
+    item_id INT NOT NULL,
+    UNIQUE (user_id, item_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
 );
