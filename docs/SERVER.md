@@ -104,4 +104,4 @@ used. They can be found at: <https://www.postgresql.org/docs/current/libpq-envar
 > [!NOTE]
 > `PGPASSWORD` is the password used when connecting to the database while `POSTGRES_PASSWORD` is the password the
 > database is created with. Both of these are set to the file `secrets/password.txt` using the `_FILE` scheme in
-> [compose.yaml](../compose.yaml).
+> [compose.yaml](../docker-compose.yaml).

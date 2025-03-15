@@ -22,6 +22,23 @@ db.on('end', () => {
 db.on('error', () => {
     connected = false
 })
+function connectToDatabase(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        db.connect((err) => {
+            if (err) reject(err)
+            resolve()
+        })
+    })
+}
+async function shutdownGracefully(): Promise<void> {
+    console.log('Shutting down gracefully')
+    await db.end()
+    console.log('Database connection closed')
+    process.exit(0)
+}
+process.on('SIGINT', shutdownGracefully)
+process.on('SIGTERM', shutdownGracefully)
+
 export async function database(): Promise<DatabaseClient> {
     if (!connected) {
         if (connecting) {
@@ -29,7 +46,10 @@ export async function database(): Promise<DatabaseClient> {
                 await sleep(5)
             }
         } else {
-            await db.connect()
+            await connectToDatabase().catch(err => {
+                console.error("Failed to connect to database: " + err.message)
+                process.exit(1)
+            })
             await db.query("SET client_encoding = 'UTF8';")
             connecting = false
             connected = true
