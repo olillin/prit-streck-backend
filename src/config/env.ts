@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+
 const PRIT_SUPER_GROUP_ID = '32da51ec-2854-4bc2-b19a-30dad5dcc501'
 
 // Environment
@@ -49,6 +51,30 @@ export function withDefaults(
     ) as Concrete<EnvironmentVariables>
 }
 
+export type FileEnvironmentVariables = EnvironmentVariables & {
+    [K in keyof EnvironmentVariables as `${K}_FILE`]: string
+}
+export function resolveFileEnvironment(env: FileEnvironmentVariables): EnvironmentVariables {
+    const out: Partial<EnvironmentVariables> = {}
+    for (const k in env) {
+        const key = k as keyof FileEnvironmentVariables
+        // Copy environment
+        out[key as keyof EnvironmentVariables] = env[key]
+
+        // Resolve _FILE environment
+        if (key.endsWith("_FILE")) {
+            const path = env[key]!
+            const shortKey = key.substring(0, key.length-5) as keyof EnvironmentVariables
+            if (!fs.existsSync(path) || !fs.lstatSync(path).isFile()) {
+                console.warn(`Unable to load environment variable ${shortKey} from ${path}, file not found`)
+                continue
+            }
+            out[shortKey] = fs.readFileSync(path).toString()
+        }
+    }
+    return out as EnvironmentVariables
+}
+
 // Validate environment
 export const requiredEnvironment: readonly (keyof EnvironmentVariables)[] = [
     'GAMMA_CLIENT_ID',
@@ -57,7 +83,6 @@ export const requiredEnvironment: readonly (keyof EnvironmentVariables)[] = [
     'GAMMA_REDIRECT_URI',
     'JWT_SECRET',
 ]
-
 requiredEnvironment.forEach(required => {
     if (!(required in process.env)) {
         console.error(`Missing required environment variable: ${required}`)
@@ -66,6 +91,6 @@ requiredEnvironment.forEach(required => {
 })
 
 const environment: Concrete<EnvironmentVariables> = withDefaults(
-    process.env as unknown as EnvironmentVariables
+    resolveFileEnvironment(process.env as unknown as FileEnvironmentVariables)
 )
 export default environment
