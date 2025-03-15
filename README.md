@@ -12,3 +12,5 @@ Check out [SERVER.md](./docs/SERVER.md)
 
 The source for the frontend by [Erik Persson](https://github.com/erikpersson0884)
 can be found at <https://github.com/erikpersson0884/strecklista>
+
+The [API documentation](docs/API.md).

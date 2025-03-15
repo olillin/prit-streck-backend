@@ -9,23 +9,37 @@ async function createApiRouter(): Promise<Router> {
 
     api.use(validateToken)
 
-    type Method = 'all' | 'get' | 'post' | 'put' | 'delete' | 'patch' | 'options' | 'head'
+    type Method =
+        | 'all'
+        | 'get'
+        | 'post'
+        | 'put'
+        | 'delete'
+        | 'patch'
+        | 'options'
+        | 'head'
     type HandlerName = keyof typeof validate & keyof typeof route
     const routes: [Method, string, HandlerName][] = [
         ['get', '/user', 'getUser'],
         ['get', '/group', 'getGroup'],
-        ['get', '/group/transactions', 'getTransactions'],
+        ['get', '/group/transaction', 'getTransactions'],
+        ['get', '/group/transaction/:id', 'getTransaction'],
         ['post', '/group/purchase', 'postPurchase'],
         ['post', '/group/deposit', 'postDeposit'],
         ['get', '/group/item', 'getItems'],
-        ['post', '/group/item', 'postItem'],
         ['get', '/group/item/:id', 'getItem'],
+        ['post', '/group/item', 'postItem'],
         ['patch', '/group/item/:id', 'patchItem'],
         ['delete', '/group/item/:id', 'deleteItem'],
     ]
 
     for (const [method, path, name] of routes) {
-        api[method](path, ...validate[name](), validationErrorHandler, route[name])
+        api[method](
+            path,
+            ...validate[name](),
+            validationErrorHandler,
+            route[name]
+        )
     }
 
     api.get('/test', (req, res) => {

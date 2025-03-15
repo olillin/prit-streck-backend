@@ -1,58 +1,157 @@
-import { ResponseBody } from './types'
+import { Location } from 'express-validator'
+import { ErrorDefinition, ErrorResolvable, ResponseBody } from './types'
 import { Response } from 'express'
 
 // Pre-defined errors
-export const errors = {
-    // General errors
-    missingRequiredProperty: (name: string) => [400, `Missing required property '${name}' in body`] as const,
-    invalidProperty: (name: string) => [400, `Property '${name}' is invalid`] as const,
-    unauthorized: [401, 'Unauthorized'],
-    expiredToken: [401, 'Token has expired'],
-    invalidToken: [401, 'Token is invalid, generate a new one'],
-    nbf: [401, 'Token has expired'],
+export enum ApiError {
+    InvalidUserId,
+    UserNotExist,
+    InvalidItemId,
+    ItemNotExist,
+    InvalidTransactionId,
+    TransactionNotExist,
+    InvalidUrl,
 
-    noPermission: [403, 'No permission to access this service'],
-    unexpected: (details: string) => [500, `An unexpected issue occured. Please create an issue on GitHub. Details: ${details}`] as const,
-    invalidGamma: [502, 'Received an invalid response from gamma'],
-    unreachableGamma: [504, 'Unable to reach gamma'],
+    // Authorization
+    Unauthorized,
+    ExpiredToken,
+    InvalidToken,
+    BeforeNbf,
+    NoPermission,
 
-    // Login errors
-    noCode: [401, 'No authorization code provided'],
-    gammaToken: (error: string) => [502, `Failed to get gamma token: ${error}`] as const,
+    // Gamma
+    GammaToken,
+    InvalidGammaResponse,
+    UnreachableGamma,
 
-    // Purchase
-    itemCount: [400, 'Item count must be greater than 0'],
-    purchaseNothing: [400, 'Must purchase at least one item'],
-    purchaseInvisible: [403, 'Cannot purchase a non-visible item'],
-    userNotExist: [404, 'User does not exist'],
-    itemNotExist: [404, 'Item does not exist'],
+    // Login
+    NoAuthorizationCode,
+    InvalidAuthorizationCode,
 
-    // Item
-    displayNameNotUnique: [403, 'Display name is not unique'],
-    unknownSortMode: [400, 'Unknown sort order'],
-    deletePurchasedItem: [403, 'An item that has been purchased cannot be deleted'],
-} as const
+    // Create purchase
+    ItemCount,
+    PurchaseNothing,
+    PurchaseInvisible,
 
-export function sendError(res: Response, getError: (...args: unknown[]) => readonly [number, string], ...args: any[]): void
+    // Create deposit
+    InvalidTotal,
+
+    // List purchase
+    InvalidOffset,
+    InvalidLimit,
+
+    // Create/modify item
+    DisplayNameNotUnique,
+    MissingPrices,
+
+    // List items
+    UnknownSortMode,
+}
+
+function err(code: number, message: string): ErrorDefinition {
+    return { code, message }
+}
+
+const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
+    [ApiError.InvalidUserId]: err(400, 'Invalid user ID'),
+    [ApiError.UserNotExist]: err(404, 'User does not exist'),
+    [ApiError.InvalidItemId]: err(400, 'Invalid item ID'),
+    [ApiError.ItemNotExist]: err(404, 'Item does not exist'),
+    [ApiError.InvalidTransactionId]: err(400, 'Invalid transaction ID'),
+    [ApiError.TransactionNotExist]: err(404, 'Transaction does not exist'),
+    [ApiError.InvalidUrl]: err(400, 'URL is invalid'),
+
+    // Authorization
+    [ApiError.Unauthorized]: err(401, 'Unauthorized'),
+    [ApiError.ExpiredToken]: err(401, 'Token is expired'),
+    [ApiError.InvalidToken]: err(401, 'Token is invalid, generate a new one'),
+    [ApiError.BeforeNbf]: err(401, 'Token cannot be used yet'),
+    [ApiError.NoPermission]: err(403, 'No permission to access this service'),
+
+    // Gamma
+    [ApiError.GammaToken]: err(502, 'Failed to get token from Gamma'),
+    [ApiError.InvalidGammaResponse]: err(502, 'Received an invalid response from Gamma'),
+    [ApiError.UnreachableGamma]: err(504, 'Unable to reach Gamma'),
+
+    // Login
+    [ApiError.NoAuthorizationCode]: err(401, 'No authorization code provided'),
+    [ApiError.InvalidAuthorizationCode]: err(401, 'Authorization code is invalid'),
+
+    // Create purchase
+    [ApiError.ItemCount]: err(400, 'Item count must be an integer greater than 0'),
+    [ApiError.PurchaseNothing]: err(400, 'Must purchase at least one item'),
+    [ApiError.PurchaseInvisible]: err(403, 'Cannot purchase a non-visible item'),
+
+    // Create deposit
+    [ApiError.InvalidTotal]: err(400, 'Total must be a number'),
+
+    // List purchase
+    [ApiError.InvalidLimit]: err(400, 'Limit must be an integer between 1 and 100'),
+    [ApiError.InvalidOffset]: err(400, 'Offset must be a positive integer'),
+
+    // Create/modify Item
+    [ApiError.DisplayNameNotUnique]: err(403, 'Display name is not unique'),
+    [ApiError.MissingPrices]: err(400, 'An item must have at least one price'),
+
+    // List items
+    [ApiError.UnknownSortMode]: err(400, 'Unknown sort order'),
+}
+
+export function getErrorDefinition(error: ApiError): ErrorDefinition {
+    const definition = errorDefinitions[error]
+    return err(definition.code, definition.message)
+}
+
+export function getErrorCode(error: ApiError): number {
+    return errorDefinitions[error].code
+}
+
+export function getErrorMessage(error: ApiError): string {
+    return errorDefinitions[error].message
+}
+
+// #region Parameterized Errors
+export function missingRequiredPropertyError(name: string, location: Location): ErrorDefinition {
+    return err(400, `Missing required property '${name}' in ${location}`)
+}
+
+export function invalidPropertyError(name: string, location: Location): ErrorDefinition {
+    return err(400, `Property '${name}' is invalid in ${location}`)
+}
+
+export function unexpectedError(details: string) {
+    return err(500, `An unexpected issue occured. Please create an issue on GitHub. Details: ${details}`)
+}
+
+export function tokenSignError(details: string): ErrorDefinition {
+    return err(500, `Failed to sign JWT: ${details}`)
+}
+// #endregion Parameterized Errors
+
+export function resolveError(error: ErrorResolvable): ErrorDefinition {
+    if (typeof error === 'number') {
+        // error is ApiError
+        return getErrorDefinition(error)
+    } else {
+        return error
+    }
+}
+
+export function sendError(res: Response, error: ErrorResolvable): void
 export function sendError(res: Response, code: number, message: string): void
-export function sendError(res: Response, error: readonly [number, string]): void
-export function sendError(res: Response, a: number | readonly [number, string] | ((...a: unknown[]) => readonly [number, string]), b?: string | any[]): void {
+export function sendError(res: Response, a: number | ErrorResolvable, b?: string): void {
     if (res.headersSent) return
 
     let code: number
     let message: string
 
-    if (a instanceof Function) {
-        const getError = a as (...args: unknown[]) => [number, string]
-        if (!Array.isArray(b)) b = [b]
-        const args = b as unknown[]
-        ;[code, message] = getError(...args)
-    } else if (Number.isInteger(a)) {
+    if (b) {
         code = a as number
-        message = b as string
+        message = b
     } else {
-        const error = a as [number, string]
-        ;[code, message] = error
+        const error = resolveError(a as ErrorResolvable)
+        code = error.code
+        message = error.message
     }
 
     const response: ResponseBody<never> = {
