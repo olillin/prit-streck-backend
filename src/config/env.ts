@@ -69,7 +69,7 @@ export function resolveFileEnvironment(env: FileEnvironmentVariables): Environme
                 console.warn(`Unable to load environment variable ${shortKey} from ${path}, file not found`)
                 continue
             }
-            out[shortKey] = fs.readFileSync(path).toString()
+            out[shortKey] = fs.readFileSync(path).toString().trim()
         }
     }
     return out as EnvironmentVariables

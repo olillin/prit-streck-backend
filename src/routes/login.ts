@@ -16,9 +16,8 @@ interface LoggedInUser {
 function signJWT(user: LoggedInUser): Promise<JWT> {
     return new Promise((resolve, reject) => {
         const expireSeconds = parseFloat(env.JWT_EXPIRES_IN)
-        const expireMs = expireSeconds * 1000
 
-        console.log(`Attempting to sign token for ${user.userId}`)
+        console.log(`Signing token for ${user.userId}`)
 
         try {
             jwt.sign(
@@ -27,7 +26,7 @@ function signJWT(user: LoggedInUser): Promise<JWT> {
                 {
                     issuer: env.JWT_ISSUER,
                     algorithm: 'HS256',
-                    expiresIn: expireMs,
+                    expiresIn: expireSeconds,
                 },
                 (error, token) => {
                     if (error) reject(error)
