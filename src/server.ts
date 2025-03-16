@@ -7,6 +7,7 @@ import createApiRouter from './routers/api'
 import { login as loginRoute } from './routes/login'
 import * as validate from './middleware/validators'
 import validationErrorHandler from './middleware/validationErrorHandler'
+import appendHeader from "./middleware/setHeader";
 
 async function main() {
     const app = express()
@@ -23,6 +24,7 @@ async function main() {
 
     app.use(express.json())
     app.use(express.urlencoded({ extended: false }))
+    app.use(appendHeader('Accept', ['application/json', 'application/x-www-form-urlencoded']))
 
     app.get('/authorize', (req, res) => {
         res.redirect(authorizationCode.authorizeUrl())

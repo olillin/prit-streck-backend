@@ -8,6 +8,7 @@ export default tseslint.config({
     languageOptions: { globals: globals.browser },
     rules: {
         '@typescript-eslint/no-explicit-any': 'warn',
+        'no-unused-vars': 'warn',
     },
     extends: [eslint.configs.recommended, tseslint.configs.recommended],
 })
