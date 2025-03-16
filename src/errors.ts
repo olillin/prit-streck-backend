@@ -26,7 +26,7 @@ export enum ApiError {
 
     // Login
     NoAuthorizationCode,
-    InvalidAuthorizationCode,
+    AuthorizationCodeUsed,
 
     // Create purchase
     ItemCount,
@@ -69,13 +69,13 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
     [ApiError.NoPermission]: err(403, 'No permission to access this service'),
 
     // Gamma
-    [ApiError.GammaToken]: err(502, 'Failed to get token from Gamma'),
+    [ApiError.GammaToken]: err(502, 'Failed to get token from Gamma, your authorization code may be invalid'),
     [ApiError.InvalidGammaResponse]: err(502, 'Received an invalid response from Gamma'),
     [ApiError.UnreachableGamma]: err(504, 'Unable to reach Gamma'),
 
     // Login
     [ApiError.NoAuthorizationCode]: err(401, 'No authorization code provided'),
-    [ApiError.InvalidAuthorizationCode]: err(401, 'Authorization code is invalid'),
+    [ApiError.AuthorizationCodeUsed]: err(401, 'Token has already been used'),
 
     // Create purchase
     [ApiError.ItemCount]: err(400, 'Item count must be an integer greater than 0'),

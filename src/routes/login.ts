@@ -53,15 +53,16 @@ export function login(): (req: Request, res: Response) => void {
             try {
                 await authorizationCode.generateToken(code)
             } catch (error) {
-                if (
-                    (error as NodeJS.ErrnoException).code === 'ENOTFOUND' ||
-                    (error as NodeJS.ErrnoException).code === 'ECONNREFUSED'
-                ) {
+                const unreachable = (error as NodeJS.ErrnoException)?.code === 'ENOTFOUND' || (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED'
+                if (unreachable) {
                     sendError(res, ApiError.UnreachableGamma)
-                } else if (error instanceof Error) {
-                    sendError(res, ApiError.InvalidAuthorizationCode)
-                } else {
-                    sendError(res, ApiError.GammaToken)
+                } else if (error) {
+                    console.error(`Failed to get token from Gamma: ${error}`)
+                    if (error instanceof Error && (error as Error).message.includes('400')) {
+                        sendError(res, ApiError.AuthorizationCodeUsed)
+                    } else {
+                        sendError(res, ApiError.GammaToken)
+                    }
                 }
                 return
             }
