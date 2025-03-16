@@ -4,13 +4,13 @@
 -- Tables
 CREATE TABLE groups (
     id SERIAL NOT NULL,
-    gamma_id VARCHAR(16) UNIQUE NOT NULL,
+    gamma_id VARCHAR(64) UNIQUE NOT NULL,
     PRIMARY KEY (id)
 );
 
 CREATE TABLE users (
     id SERIAL NOT NULL,
-    gamma_id VARCHAR(16) UNIQUE NOT NULL,
+    gamma_id VARCHAR(64) UNIQUE NOT NULL,
     group_id INT NOT NULL,
     balance NUMERIC(7,2) NOT NULL DEFAULT 0.0,
     PRIMARY KEY (id),
