@@ -3,6 +3,7 @@ import validateToken from '../middleware/validateToken'
 import validationErrorHandler from '../middleware/validationErrorHandler'
 import * as validate from '../middleware/validators'
 import * as route from '../routes/api'
+import setHeader from "../middleware/setHeader";
 
 async function createApiRouter(): Promise<Router> {
     const api = Router()
@@ -34,8 +35,16 @@ async function createApiRouter(): Promise<Router> {
     ]
 
     for (const [method, path, name] of routes) {
+        // Get allowed methods on this path
+        const methods: Set<string> = new Set(
+            routes
+                .filter(other => other[1] === path)
+                .map(other => other[0].toUpperCase())
+        )
+        // Register listeners
         api[method](
             path,
+            setHeader('Allow', methods),
             ...validate[name](),
             validationErrorHandler,
             route[name]

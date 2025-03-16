@@ -1,10 +1,10 @@
-import { Request, Response } from 'express'
+import {Request, RequestHandler, Response} from 'express'
 import { GroupId, UserId } from 'gammait'
 import jwt from 'jsonwebtoken'
 import { authorizationCode, clientApi, database } from '../config/clients'
 import env from '../config/env'
-import { ApiError, sendError, tokenSignError, unexpectedError } from '../errors'
-import { JWT, LoginResponse, ResponseBody } from '../types'
+import {ApiError, sendError, tokenSignError} from '../errors'
+import { JWT  } from '../types'
 import * as convert from '../util/convert'
 import { getAuthorizedGroup } from '../util/getter'
 
@@ -43,8 +43,9 @@ function signJWT(user: LoggedInUser): Promise<JWT> {
     })
 }
 
-export function login(): (req: Request, res: Response) => void {
+export function login(): RequestHandler {
     return async (req: Request, res: Response) => {
+        res.setHeader('Allow', 'POST')
         try {
             // Validate request
             const code = (req.query.code ?? req.body.code) as string
@@ -53,10 +54,11 @@ export function login(): (req: Request, res: Response) => void {
             try {
                 await authorizationCode.generateToken(code)
             } catch (error) {
-                const unreachable = (error as NodeJS.ErrnoException)?.code === 'ENOTFOUND' || (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED'
+                const unreachable = (error as NodeJS.ErrnoException)?.code === 'ENOTFOUND'
+                    || (error as NodeJS.ErrnoException)?.code === 'ECONNREFUSED'
                 if (unreachable) {
                     sendError(res, ApiError.UnreachableGamma)
-                } else if (error) {
+                } else {
                     console.error(`Failed to get token from Gamma: ${error}`)
                     if (error instanceof Error && (error as Error).message.includes('400')) {
                         sendError(res, ApiError.AuthorizationCodeUsed)
