@@ -36,7 +36,7 @@ export enum ApiError {
     // Create deposit
     InvalidTotal,
 
-    // List purchase
+    // List transactions
     InvalidOffset,
     InvalidLimit,
 
@@ -75,7 +75,7 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
 
     // Login
     [ApiError.NoAuthorizationCode]: err(401, 'No authorization code provided'),
-    [ApiError.AuthorizationCodeUsed]: err(401, 'Token has already been used'),
+    [ApiError.AuthorizationCodeUsed]: err(401, 'Authorization code has already been used'),
 
     // Create purchase
     [ApiError.ItemCount]: err(400, 'Item count must be an integer greater than 0'),
