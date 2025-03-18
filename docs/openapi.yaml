@@ -5,7 +5,7 @@ info:
     [P.R.I.T.](https://prit.chalmers.it) at Chalmers'
     [IT student division](https://chalmers.it).
   contact:
-    email: cal@chalmers.it
+    email: oli@olillin.com
   license:
     name: MIT License
     url: https://github.com/olillin/prit-streck-backend/blob/main/LICENSE
@@ -55,6 +55,10 @@ components:
               type: string
               required: true
               description: Message describing the error
+    Unauthorized:
+      description: "Unauthorized"
+      allOf:
+        - $ref: "#/components/schemas/Error"
     GroupId:
       description: "ID that uniquely identifies a group"
       type: string
@@ -267,6 +271,188 @@ components:
               $ref: "#/components/schemas/User"
             group:
               $ref: "#/components/schemas/Group"
+    GroupResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - group
+            - members
+          properties:
+            group:
+              $ref: "#/components/schemas/Group"
+            members:
+              type: array
+              items:
+                $ref: "#/components/schemas/User"
+    UserResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - user
+            - group
+          properties:
+            user:
+              $ref: "#/components/schemas/User"
+            group:
+              $ref: "#/components/schemas/Group"
+    ItemsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - items
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/Item"
+    ItemResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - item
+          properties:
+            item:
+              $ref: "#/components/schemas/Item"
+    TransactionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - transaction
+          properties:
+            transaction:
+              $ref: "#/components/schemas/Transaction"
+    CreatedTransactionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          allOf:
+            - type: object
+              required:
+                - balance
+              properties:
+                balance:
+                  description: User balance after transaction
+                  type: number
+            - $ref: "#/components/schemas/TransactionType"
+    TransactionsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - transactions
+          properties:
+            transactions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Transaction"
+            next:
+              description: "URL to get the next page of transactions"
+              type: string
+              format: URL
+            previous:
+              description: "URL to get the previous page of transactions"
+              type: string
+              format: URL
+    PostPurchaseBody:
+      type: object
+      required:
+        - userId
+        - items
+      properties:
+        userId:
+          allOf:
+            - description: The user that the transaction will be added to
+            - $ref: "#/components/schemas/UserId"
+        items:
+          description: "The items to purchase"
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - id
+              - quantity
+              - purchasePrice
+            properties:
+              id:
+                $ref: "#/components/schemas/ItemId"
+              quantity:
+                description: "How many of the item to purchase"
+                type: integer
+                minimum: 1
+              purchasePrice:
+                $ref: "#/components/schemas/Price"
+    PostDepositBody:
+      type: object
+      required:
+        - userId
+        - total
+      properties:
+        userId:
+          allOf:
+            - description: The user that the transaction will be added to
+            - $ref: "#/components/schemas/UserId"
+        total:
+          type: number
+    PostItemBody:
+      type: object
+      required:
+        - displayName
+        - prices
+      properties:
+        displayName:
+          type: string
+        prices:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Price"
+        icon:
+          type: string
+          format: URL
+    PatchItemBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+        prices:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Price"
+        icon:
+          type: string
+          format: URL
+        visible:
+          description: Whether or not to show the item in the store
+          type: boolean
+        favorite:
+          description: Whether or not this item is marked as a favorite
+          type: boolean
 
   examples:
     InvalidUserId:
@@ -429,6 +615,17 @@ components:
           code: 500
           message: "Failed to sign JWT: {details}"
 
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            $ref: "#/components/examples/Unauthorized"
+
+
 security:
   - bearer: [ ]
 
@@ -484,3 +681,10 @@ paths:
       responses:
         200:
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+
