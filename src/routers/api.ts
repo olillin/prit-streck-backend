@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import validateToken from '../middleware/validateToken'
 import validationErrorHandler from '../middleware/validationErrorHandler'
-import * as validate from '../middleware/validators'
-import * as route from '../routes/api'
+import * as validators from '../middleware/validators'
+import * as apiRoutes from '../routes/api'
 import setHeader from "../middleware/setHeader";
 
 async function createApiRouter(): Promise<Router> {
@@ -19,7 +19,7 @@ async function createApiRouter(): Promise<Router> {
         | 'patch'
         | 'options'
         | 'head'
-    type HandlerName = keyof typeof validate & keyof typeof route
+    type HandlerName = keyof typeof validators & keyof typeof apiRoutes
     const routes: [Method, string, HandlerName][] = [
         ['get', '/user', 'getUser'],
         ['get', '/group', 'getGroup'],
@@ -45,15 +45,11 @@ async function createApiRouter(): Promise<Router> {
         api[method](
             path,
             setHeader('Allow', methods),
-            ...validate[name](),
+            ...validators[name](),
             validationErrorHandler,
-            route[name]
+            apiRoutes[name]
         )
     }
-
-    api.get('/test', (req, res) => {
-        res.end('Hello world')
-    })
 
     return api
 }
