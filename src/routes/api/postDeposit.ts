@@ -12,11 +12,16 @@ export default async function postDeposit(req: Request, res: Response) {
 
     const { userId: createdFor, total } = req.body as PostDepositBody
 
-    const userId: UserId = getUserId(res)
+    const createdBy: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
 
-    const user = await db.getUser(userId)
-    if (!user) {
+    const userBy = await db.getUser(createdBy)
+    if (!userBy) {
+        sendError(res, ApiError.Unauthorized)
+        return
+    }
+    const userFor = await db.getUser(createdFor)
+    if (!userFor) {
         sendError(res, ApiError.UserNotExist)
         return
     }
@@ -24,7 +29,7 @@ export default async function postDeposit(req: Request, res: Response) {
     // Create transaction
     let dbTransaction: tableType.Transactions
     try {
-        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
+        dbTransaction = await db.createTransaction(groupId, createdBy, createdFor)
     } catch (e) {
         const message = 'Failed to create deposit transaction, ' + e
         console.error(message)
@@ -43,8 +48,8 @@ export default async function postDeposit(req: Request, res: Response) {
     }
 
     // Update user balance
-    const balance = user.balance + total
-    await db.setBalance(userId, balance)
+    const balance = userFor.balance + total
+    await db.setBalance(createdFor, balance)
 
     const transaction: Deposit = convert.toDeposit(dbTransaction, dbDeposit)
     const body: ResponseBody<CreatedTransactionResponse> = {

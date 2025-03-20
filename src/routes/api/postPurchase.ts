@@ -12,11 +12,16 @@ export default async function postPurchase(req: Request, res: Response) {
 
     const {userId: createdFor, items} = req.body as PostPurchaseBody
 
-    const userId: UserId = getUserId(res)
+    const createdBy: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
 
-    const user = await db.getUser(userId)
-    if (!user) {
+    const userBy = await db.getUser(createdBy)
+    if (!userBy) {
+        sendError(res, ApiError.UserNotExist)
+        return
+    }
+    const userFor = await db.getUser(createdFor)
+    if (!userFor) {
         sendError(res, ApiError.UserNotExist)
         return
     }
@@ -24,7 +29,7 @@ export default async function postPurchase(req: Request, res: Response) {
     // Create transaction
     let dbTransaction: tableType.Transactions
     try {
-        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
+        dbTransaction = await db.createTransaction(groupId, createdBy, createdFor)
     } catch (e) {
         const message = 'Failed to create purchase transaction, ' + e
         console.error(message)
@@ -36,7 +41,7 @@ export default async function postPurchase(req: Request, res: Response) {
     let total = 0
 
     const itemPromises = items.map(async item => {
-        const dbItem = await getter.item(item.id, userId)
+        const dbItem = await getter.item(item.id, createdBy)
 
         // Update purchase total
         total += item.purchasePrice.price * item.quantity
@@ -57,8 +62,8 @@ export default async function postPurchase(req: Request, res: Response) {
     await Promise.all(itemPromises)
 
     // Update user balance
-    const balance = user.balance - total
-    await db.setBalance(userId, balance)
+    const balance = userFor.balance - total
+    await db.setBalance(createdFor, balance)
 
     const transaction: Purchase = await getter.purchase(dbTransaction.id)
     const body: ResponseBody<CreatedTransactionResponse> = {
