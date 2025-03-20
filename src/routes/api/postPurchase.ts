@@ -21,7 +21,7 @@ export default async function postPurchase(req: Request, res: Response) {
         return
     }
     const userFor = await db.getUser(createdFor)
-    if (!userFor) {
+    if (!userFor || userFor.groupid != groupId) {
         sendError(res, ApiError.UserNotExist)
         return
     }
