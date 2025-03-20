@@ -1,14 +1,7 @@
 -- Get deposits in group 1
-SELECT id,
-       group_id,
-       created_by,
-       created_for,
-       created_time,
-       total
-FROM transactions
-         JOIN deposits ON
-    id = transaction_id
-WHERE group_id = 1;
+SELECT * FROM deposits WHERE group_id = 1;
+-- Get purchases in group 2
+SELECT * FROM purchases WHERE group_id = 1;
 
 -- Get balance for user 1
 SELECT coalesce((SELECT sum(total)
