@@ -53,10 +53,8 @@ INSERT INTO purchased_items
 (transaction_id, item_id, display_name, purchase_price, purchase_price_name, quantity)
 VALUES (2, 2, 'Läsk', 7, 'P.R.I.T.', 1);
 
-INSERT INTO transactions(group_id, created_by, created_for)
-VALUES (1, 1, 1);
-INSERT INTO deposits(transaction_id, total)
-VALUES (3, 250);
+INSERT INTO deposits(group_id, created_by, created_for, total)
+VALUES (1, 1, 1, 250);
 
 INSERT INTO favorite_items(user_id, item_id)
 VALUES (1, 2);

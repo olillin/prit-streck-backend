@@ -1,17 +1,14 @@
--- Types
-
-
 -- Tables
 CREATE TABLE groups
 (
-    id       INT                NOT NULL GENERATED ALWAYS AS IDENTITY,
+    id       SERIAL                NOT NULL,
     gamma_id VARCHAR(64) UNIQUE NOT NULL,
     PRIMARY KEY (id)
 );
 
 CREATE TABLE users
 (
-    id       INT                NOT NULL GENERATED ALWAYS AS IDENTITY,
+    id       SERIAL             NOT NULL,
     gamma_id VARCHAR(64) UNIQUE NOT NULL,
     group_id INT                NOT NULL,
     PRIMARY KEY (id),
@@ -20,7 +17,7 @@ CREATE TABLE users
 
 CREATE TABLE items
 (
-    id              INT          NOT NULL GENERATED ALWAYS AS IDENTITY,
+    id              SERIAL       NOT NULL,
     group_id        INT          NOT NULL,
     display_name    VARCHAR(100) NOT NULL,
     icon_url        VARCHAR(500),
@@ -43,7 +40,7 @@ CREATE TABLE prices
 
 CREATE TABLE transactions
 (
-    id           INT         NOT NULL GENERATED ALWAYS AS IDENTITY,
+    id           SERIAL      NOT NULL,
     group_id     INT         NOT NULL,
     created_by   INT         NOT NULL,
     created_for  INT         NOT NULL,
@@ -62,7 +59,7 @@ CREATE TABLE purchased_items
     icon_url            VARCHAR(500),
     purchase_price      NUMERIC(7, 2) NOT NULL,
     purchase_price_name VARCHAR(30)   NOT NULL,
-    quantity            INT           NOT NULL,
+    quantity            INT           NOT NULL CHECK (quantity >= 1),
     FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE,
     FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE SET NULL
 );
@@ -83,9 +80,9 @@ CREATE TABLE favorite_items
 
 -- Views
 CREATE VIEW purchases AS
-SELECT t.id, t.group_id, t.group_id, t.created_by, t.created_for, t.created_time,
+SELECT t.id, t.group_id, t.created_by, t.created_for, t.created_time,
     i.item_id, i.display_name, i.icon_url, i.purchase_price, i.purchase_price_name, i.quantity
-FROM ONLY transactions t LEFT JOIN purchased_items i ON t.id == i.transaction_id;
+FROM ONLY transactions t LEFT JOIN purchased_items i ON t.id = i.transaction_id;
 
 CREATE VIEW users_total_deposited AS
 SELECT u.id, u.gamma_id, u.group_id,
@@ -106,8 +103,8 @@ FROM users u;
 
 CREATE VIEW user_balances AS
 SELECT u.id, u.gamma_id, u.group_id,
-        (SELECT (d.total) FROM users_total_deposited d WHERE d.id == u.id)
-      - (SELECT (p.total) FROM users_total_purchased p WHERE p.id == u.id) AS balance
+        (SELECT (d.total) FROM users_total_deposited d WHERE d.id = u.id)
+      - (SELECT (p.total) FROM users_total_purchased p WHERE p.id = u.id) AS balance
 FROM users u;
 
 CREATE VIEW full_user AS
