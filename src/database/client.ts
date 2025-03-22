@@ -1,18 +1,96 @@
 import { GroupId, UserId } from 'gammait'
-import { Client, QueryResult, QueryResultRow } from 'pg'
+import {Client, ClientConfig, QueryResult, QueryResultRow} from 'pg'
 import * as q from './queries'
 import * as tableType from './types'
 import { Price } from '../types'
 
 class ValidationError extends Error {}
 
+const REQUIRED_TABLES = [
+    'deposits',
+    'favorite_items',
+    'full_user',
+    'groups',
+    'items',
+    'prices',
+    'purchased_items',
+    'purchases',
+    'transactions',
+    'user_balances',
+    'users',
+    'users_total_deposited',
+    'users_total_purchased',
+]
+
 export const legalItemColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
 
 class DatabaseClient extends Client {
-    validateDatabase() {
-        // TODO: Validate that all tables exist and are properly configured.
+    isReady: boolean = false
+    invalid: boolean = false
+
+    /**
+     * Validates that the database is properly initialized and ready for use.
+     * Rejects if the validation fails.
+     */
+    validateDatabase(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const failValidation = (reason?: string) => {
+                reject('Database validation failed' + (reason ? `: ${reason}` : ''))
+            }
+
+            try {
+                this.fetchRows<tableType.TableNames>(q.GET_TABLES).then(tables => {
+                    const existingTables = tables.map(row => row.table_name)
+                    const missingTables = REQUIRED_TABLES.filter(table => !existingTables.includes(table));
+
+                    if (missingTables.length > 0) {
+                        failValidation("Database is missing tables")
+                        return
+                    }
+                    resolve()
+                }).catch(reason => {
+                    failValidation(reason)
+                }
+            )
+            } catch (error) {
+                if (error instanceof Error)
+                    failValidation((error as Error).message)
+                else
+                    failValidation(String(error))
+                return
+            }
+            reject()
+        })
     }
+
+    constructor(config?: string | ClientConfig) {
+        super(config);
+
+        // Start validation
+        this.validateDatabase().then(() => {
+            console.log('Database validated successfully')
+            this.isReady = true
+        }).catch(reason => {
+            console.error(reason)
+            this.invalid = true
+        })
+    }
+
+    ready(): Promise<typeof this> {
+        return new Promise((resolve, reject) => {
+            const check = () => {
+                if (this.invalid) {
+                    reject("Database validation failed")
+                } else if (this.isReady) {
+                    resolve(this)
+                } else {
+                    setTimeout(check, 1000);
+                }
+            }
+            check()
+        })
+    };
 
     // #region Utility
     private async fetch<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {

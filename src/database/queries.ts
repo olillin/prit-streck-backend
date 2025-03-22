@@ -1,3 +1,46 @@
+// Database transactions
+
+// GLOBAL OPERATIONS:
+// Related to the 'groups' table
+// Check if user exists in any group
+//
+// LOCAL (GROUP) OPERATIONS:
+// Everything else
+
+// Create group
+// Delete group
+// Get group with members
+// Get groups
+// Check group exists
+
+// Create user
+// Update user gamma id
+// Delete user
+// Get user with group
+// Check user exists in group
+// Check user exists in any group
+
+// Create item with prices
+// Create item with prices and icon
+// Update item (dynamic transaction)
+// Add favorite item
+// Remove favorite item
+// Get item in group with prices
+// Get items in group with prices
+// Check item exists in group
+// Check display name exists in group
+// Delete item
+
+// Remove prices for item
+// Add prices to item (dynamic transaction)
+
+// Get purchase by id in group
+// Create purchase with purchased items (dynamic transaction)
+// Create deposit
+// Get transactions in group with
+
+export const GET_TABLES = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+
 export const CREATE_GROUP = 'INSERT INTO groups VALUES ($1) RETURNING *'
 export const GET_GROUP = 'SELECT * FROM groups WHERE gammaId = $1 LIMIT 1'
 export const GET_GROUPS = 'SELECT gammaId FROM groups'
