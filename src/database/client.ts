@@ -1,26 +1,10 @@
-import { GroupId, UserId } from 'gammait'
+import {GroupId, UserId} from 'gammait'
 import {Client, ClientConfig, QueryResult, QueryResultRow} from 'pg'
 import * as q from './queries'
 import * as tableType from './types'
-import { Price } from '../types'
+import {Price} from '../types'
 
-class ValidationError extends Error {}
-
-const REQUIRED_TABLES = [
-    'deposits',
-    'favorite_items',
-    'full_user',
-    'groups',
-    'items',
-    'prices',
-    'purchased_items',
-    'purchases',
-    'transactions',
-    'user_balances',
-    'users',
-    'users_total_deposited',
-    'users_total_purchased',
-]
+const REQUIRED_TABLES = ['deposits', 'favorite_items', 'full_user', 'groups', 'items', 'prices', 'purchased_items', 'purchases', 'transactions', 'user_balances', 'users', 'users_total_deposited', 'users_total_purchased',]
 
 export const legalItemColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
@@ -29,51 +13,47 @@ class DatabaseClient extends Client {
     isReady: boolean = false
     invalid: boolean = false
 
+    constructor(config?: string | ClientConfig) {
+        super(config);
+
+        // Connect to database
+        this.connect()
+            // Start validation
+            .then(() => this.validateDatabase())
+            .then(() => {
+                console.log('Database validated successfully')
+                return this.query("SET client_encoding = 'UTF8';")
+            }).then(() => this.isReady = true)
+            .catch(reason => {
+                console.error('Creating database client failed: ' + reason)
+                this.invalid = true
+            })
+
+    }
+
     /**
      * Validates that the database is properly initialized and ready for use.
      * Rejects if the validation fails.
      */
     validateDatabase(): Promise<void> {
         return new Promise((resolve, reject) => {
-            const failValidation = (reason?: string) => {
-                reject('Database validation failed' + (reason ? `: ${reason}` : ''))
-            }
-
-            try {
-                this.fetchRows<tableType.TableNames>(q.GET_TABLES).then(tables => {
+            // Get database tables
+            this.fetchRows<tableType.TableNames>(q.GET_TABLES)
+                .then(tables => {
+                    // Check if all required tables exist
                     const existingTables = tables.map(row => row.table_name)
                     const missingTables = REQUIRED_TABLES.filter(table => !existingTables.includes(table));
-
                     if (missingTables.length > 0) {
-                        failValidation("Database is missing tables")
-                        return
+                        throw "Database is missing tables"
                     }
+
+                    // All checks pass
                     resolve()
-                }).catch(reason => {
-                    failValidation(reason)
-                }
-            )
-            } catch (error) {
-                if (error instanceof Error)
-                    failValidation((error as Error).message)
-                else
-                    failValidation(String(error))
-                return
-            }
-            reject()
-        })
-    }
-
-    constructor(config?: string | ClientConfig) {
-        super(config);
-
-        // Start validation
-        this.validateDatabase().then(() => {
-            console.log('Database validated successfully')
-            this.isReady = true
-        }).catch(reason => {
-            console.error(reason)
-            this.invalid = true
+                })
+                .catch(reason => {
+                    // Validation failed
+                    reject('Database validation failed' + (reason ? `: ${reason}` : ''))
+                })
         })
     }
 
@@ -92,30 +72,6 @@ class DatabaseClient extends Client {
         })
     };
 
-    // #region Utility
-    private async fetch<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {
-        return new Promise(resolve => {
-            this.query(query, values).then(response => {
-                resolve(response)
-            })
-        })
-    }
-
-    private async fetchRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
-        return (await this.fetch<T>(query, ...values)).rows
-    }
-
-    private async fetchFirst<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
-        return (await this.fetchRows<T>(query, ...values))[0]
-    }
-
-    private async fetchExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
-        return !!(await this.fetchFirst<T>(query, ...values))!.exists
-    }
-    // #endregion Utility
-
-    // #region Queries
-
     //  Groups
     async createGroup(groupId: GroupId) {
         return await this.fetchFirst(q.CREATE_GROUP, groupId)
@@ -132,6 +88,10 @@ class DatabaseClient extends Client {
     async groupExists(groupId: GroupId): Promise<boolean> {
         return await this.fetchExists(q.GROUP_EXISTS, groupId)
     }
+
+    // #endregion Utility
+
+    // #region Queries
 
     // Users
     async createUser(userId: UserId, groupId: GroupId): Promise<tableType.Users> {
@@ -261,26 +221,11 @@ class DatabaseClient extends Client {
     // Purchased items
     async addPurchasedItem(purchaseId: number, quantity: number, purchasePrice: Price, itemId: number, displayName: string, iconUrl?: string): Promise<tableType.PurchasedItems> {
         if (iconUrl) {
-            return (await this.fetchFirst(
-                q.ADD_PURCHASED_ITEM_WITH_ICON, //
-                purchaseId,
-                quantity,
-                purchasePrice.price,
-                purchasePrice.displayName,
-                itemId,
-                displayName,
-                iconUrl
-            ))!
+            return (await this.fetchFirst(q.ADD_PURCHASED_ITEM_WITH_ICON, //
+                purchaseId, quantity, purchasePrice.price, purchasePrice.displayName, itemId, displayName, iconUrl))!
         } else {
-            return (await this.fetchFirst(
-                q.ADD_PURCHASED_ITEM, //
-                purchaseId,
-                quantity,
-                purchasePrice.price,
-                purchasePrice.displayName,
-                itemId,
-                displayName
-            ))!
+            return (await this.fetchFirst(q.ADD_PURCHASED_ITEM, //
+                purchaseId, quantity, purchasePrice.price, purchasePrice.displayName, itemId, displayName))!
         }
     }
 
@@ -306,6 +251,29 @@ class DatabaseClient extends Client {
     async isFavorite(userId: UserId, itemId: number): Promise<boolean> {
         return await this.fetchExists(q.FAVORITE_ITEM_EXISTS, userId, itemId)
     }
+
+    // #region Utility
+    private async fetch<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {
+        return new Promise(resolve => {
+            this.query(query, values).then(response => {
+                resolve(response)
+            })
+        })
+    }
+
+    private async fetchRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
+        return (await this.fetch<T>(query, ...values)).rows
+    }
+
+    private async fetchFirst<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
+        return (await this.fetchRows<T>(query, ...values))[0]
+    }
+
+    private async fetchExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
+        return !!(await this.fetchFirst<T>(query, ...values))!.exists
+    }
+
     // #endregion Queries
 }
+
 export default DatabaseClient
