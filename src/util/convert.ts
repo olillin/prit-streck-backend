@@ -39,7 +39,7 @@ function isUserInfo(gammaUser: GammaUser): gammaUser is gamma.UserInfo {
     return 'sub' in gammaUser
 }
 export function toUser(
-    dbUser: tableType.Users,
+    dbUser: tableType.FullUser,
     gammaUser: gamma.User | gamma.UserInfo
 ): User {
     return {
@@ -71,7 +71,7 @@ export function toGroup(gammaGroup: gamma.Group | gamma.GroupWithPost): Group {
 }
 
 export function toUserResponse(
-    dbUser: tableType.Users,
+    dbUser: tableType.FullUser,
     gammaUser: GammaUser,
     gammaGroup: gamma.Group
 ): UserResponse {
@@ -82,7 +82,7 @@ export function toUserResponse(
 }
 
 export function toLoginResponse(
-    dbUser: tableType.Users,
+    dbUser: tableType.FullUser,
     gammaUser: GammaUser,
     gammaGroup: gamma.Group,
     token: JWT

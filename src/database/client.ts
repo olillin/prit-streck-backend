@@ -9,6 +9,12 @@ const REQUIRED_TABLES = ['deposits', 'favorite_items', 'full_user', 'groups', 'i
 export const legalItemColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
 
+export class DatabaseError extends Error {
+    constructor(message?: string) {
+        super(message);
+    }
+}
+
 class DatabaseClient extends Client {
     isReady: boolean = false
     invalid: boolean = false
@@ -38,7 +44,7 @@ class DatabaseClient extends Client {
     validateDatabase(): Promise<void> {
         return new Promise((resolve, reject) => {
             // Get database tables
-            this.fetchRows<tableType.TableNames>(q.GET_TABLES)
+            this.queryRows<tableType.TableNames>(q.GET_TABLES)
                 .then(tables => {
                     // Check if all required tables exist
                     const existingTables = tables.map(row => row.table_name)
@@ -73,20 +79,30 @@ class DatabaseClient extends Client {
     };
 
     //  Groups
-    async createGroup(groupId: GroupId) {
-        return await this.fetchFirst(q.CREATE_GROUP, groupId)
+    async createGroup(gammaGroupId: GroupId): Promise<tableType.Groups> {
+        return (await this.queryFirstRow(q.CREATE_GROUP, gammaGroupId))!
+    }
+    
+    async softCreateGroupAndUser(gammaGroupId: GroupId, gammaUserId: UserId): Promise<tableType.FullUser> {
+        return (await this.queryWithTransaction<tableType.FullUser>(
+            q.SOFT_CREATE_GROUP_AND_USER, gammaGroupId, gammaUserId
+        ))!.rows[0]
     }
 
-    async getGroup(groupId: GroupId): Promise<tableType.Groups | undefined> {
-        return await this.fetchFirst(q.GET_GROUP, groupId)
+    async getGroup(groupId: number): Promise<tableType.Groups | undefined> {
+        return await this.queryFirstRow(q.GET_GROUP, groupId)
     }
 
     async getGroups(): Promise<tableType.Groups[]> {
-        return await this.fetchRows(q.GET_GROUPS)
+        return await this.queryRows(q.GET_GROUPS)
     }
 
-    async groupExists(groupId: GroupId): Promise<boolean> {
-        return await this.fetchExists(q.GROUP_EXISTS, groupId)
+    async groupExists(groupId: number): Promise<boolean> {
+        return await this.queryExists(q.GROUP_EXISTS, groupId)
+    }
+
+    async gammaGroupExists(gammaGroupId: GroupId): Promise<boolean> {
+        return await this.queryExists(q.GAMMA_GROUP_EXISTS, gammaGroupId)
     }
 
     // #endregion Utility
@@ -95,40 +111,40 @@ class DatabaseClient extends Client {
 
     // Users
     async createUser(userId: UserId, groupId: GroupId): Promise<tableType.Users> {
-        return (await this.fetchFirst(q.CREATE_USER, userId, groupId))!
+        return (await this.queryFirstRow(q.CREATE_USER, userId, groupId))!
     }
 
-    async getUser(userId: UserId): Promise<tableType.Users | undefined> {
-        return await this.fetchFirst(q.GET_USER, userId)
+    async getUser(userId: number): Promise<tableType.Users | undefined> {
+        return await this.queryFirstRow(q.GET_USER, userId)
     }
 
-    async getUsersInGroup(groupId: GroupId): Promise<tableType.Users[]> {
-        return await this.fetchRows(q.GET_USERS_IN_GROUP, groupId)
+    async getUsersInGroup(groupId: number): Promise<tableType.Users[]> {
+        return await this.queryRows(q.GET_USERS_IN_GROUP, groupId)
     }
 
-    async setBalance(userId: UserId, balance: number) {
-        return await this.fetchFirst(q.SET_BALANCE, userId, balance)
+    async setBalance(userId: number, balance: number) {
+        return await this.queryFirstRow(q.SET_BALANCE, userId, balance)
     }
 
-    async userExists(userId: UserId): Promise<boolean> {
-        return await this.fetchExists(q.USER_EXISTS, userId)
+    async userExists(userId: number): Promise<boolean> {
+        return await this.queryExists(q.USER_EXISTS, userId)
     }
 
     // Items
-    async createItem(groupId: GroupId, displayName: string, iconUrl?: string): Promise<tableType.Items> {
+    async createItem(groupId: number, displayName: string, iconUrl?: string): Promise<tableType.Items> {
         if (iconUrl) {
-            return (await this.fetchFirst(q.CREATE_ITEM_WITH_ICON, groupId, displayName, iconUrl))!
+            return (await this.queryFirstRow(q.CREATE_ITEM_WITH_ICON, groupId, displayName, iconUrl))!
         } else {
-            return (await this.fetchFirst(q.CREATE_ITEM, groupId, displayName))!
+            return (await this.queryFirstRow(q.CREATE_ITEM, groupId, displayName))!
         }
     }
 
     async getItem(itemId: number): Promise<tableType.Items | undefined> {
-        return await this.fetchFirst(q.GET_ITEM, itemId)
+        return await this.queryFirstRow(q.GET_ITEM, itemId)
     }
 
-    async getItemsInGroup(groupId: GroupId): Promise<tableType.Items[]> {
-        return await this.fetchRows(q.GET_ITEMS_IN_GROUP, groupId)
+    async getItemsInGroup(groupId: number): Promise<tableType.Items[]> {
+        return await this.queryRows(q.GET_ITEMS_IN_GROUP, groupId)
     }
 
     async updateItem(itemId: number, columns: LegalItemColumn[], values: any[]): Promise<tableType.Items | undefined> {
@@ -141,22 +157,22 @@ class DatabaseClient extends Client {
             if (!legalItemColumns.includes(columns[i])) {
                 throw new Error(`Illegal column ${columns[i]}`)
             }
-            row = await this.fetchFirst(q.UPDATE_ITEM(columns[i]), itemId, values[i])
+            row = await this.queryFirstRow(q.UPDATE_ITEM(columns[i]), itemId, values[i])
         }
 
         return row
     }
 
     async itemExists(itemId: number): Promise<boolean> {
-        return await this.fetchExists(q.ITEM_EXISTS, itemId)
+        return await this.queryExists(q.ITEM_EXISTS, itemId)
     }
 
-    async itemExistsInGroup(itemId: number, groupId: GroupId): Promise<boolean> {
-        return await this.fetchExists(q.ITEM_EXISTS_IN_GROUP, itemId, groupId)
+    async itemExistsInGroup(itemId: number, groupId: number): Promise<boolean> {
+        return await this.queryExists(q.ITEM_EXISTS_IN_GROUP, itemId, groupId)
     }
 
-    async itemNameExistsInGroup(name: string, groupId: GroupId): Promise<boolean> {
-        return await this.fetchExists(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId)
+    async itemNameExistsInGroup(name: string, groupId: number): Promise<boolean> {
+        return await this.queryExists(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId)
     }
 
     async isItemVisible(itemId: number): Promise<boolean> {
@@ -164,113 +180,130 @@ class DatabaseClient extends Client {
     }
 
     async deleteItem(itemId: number): Promise<void> {
-        await this.fetch(q.DELETE_ITEM, itemId)
+        await this.queryWith(q.DELETE_ITEM, itemId)
     }
 
     // Prices
     async addPrice(itemId: number, price: number, displayName: string): Promise<tableType.Prices> {
-        return (await this.fetchFirst(q.CREATE_PRICE, itemId, price, displayName))!
+        return (await this.queryFirstRow(q.CREATE_PRICE, itemId, price, displayName))!
     }
 
     async getPricesForItem(itemId: number): Promise<tableType.Prices[]> {
-        return await this.fetchRows(q.GET_PRICES_FOR_ITEM, itemId)
+        return await this.queryRows(q.GET_PRICES_FOR_ITEM, itemId)
     }
 
     async removePricesForItem(itemId: number): Promise<void> {
-        await this.fetch(q.REMOVE_PRICES_FOR_ITEM, itemId)
+        await this.queryWith(q.REMOVE_PRICES_FOR_ITEM, itemId)
     }
 
     // Transactions
-    async createTransaction(groupId: GroupId, createdBy: UserId, createdFor: UserId): Promise<tableType.Transactions> {
-        return (await this.fetchFirst(q.CREATE_TRANSACTION, groupId, createdBy, createdFor))!
+    async createTransaction(groupId: number, createdBy: number, createdFor: number): Promise<tableType.Transactions> {
+        return (await this.queryFirstRow(q.CREATE_TRANSACTION, groupId, createdBy, createdFor))!
     }
 
     async getTransaction(transactionId: number): Promise<tableType.Transactions | undefined> {
-        return await this.fetchFirst(q.GET_TRANSACTION, transactionId)
+        return await this.queryFirstRow(q.GET_TRANSACTION, transactionId)
     }
 
-    async transactionExistsInGroup(transactionId: number, groupId: GroupId): Promise<boolean> {
-        return await this.fetchExists(q.TRANSACTION_EXISTS_IN_GROUP, transactionId, groupId)
+    async transactionExistsInGroup(transactionId: number, groupId: number): Promise<boolean> {
+        return await this.queryExists(q.TRANSACTION_EXISTS_IN_GROUP, transactionId, groupId)
     }
 
-    async countTransactionsInGroup(groupId: GroupId): Promise<number> {
-        return parseInt((await this.fetchFirst<tableType.Count>(q.COUNT_TRANSACTIONS_IN_GROUP, groupId))!.count)
+    async countTransactionsInGroup(groupId: number): Promise<number> {
+        return parseInt((await this.queryFirstRow<tableType.Count>(q.COUNT_TRANSACTIONS_IN_GROUP, groupId))!.count)
     }
 
-    async getTransactionsInGroup(groupId: GroupId): Promise<tableType.Transactions[]> {
-        return await this.fetchRows(q.GET_TRANSACTIONS_IN_GROUP, groupId)
+    async getTransactionsInGroup(groupId: number): Promise<tableType.Transactions[]> {
+        return await this.queryRows(q.GET_TRANSACTIONS_IN_GROUP, groupId)
     }
 
     async deleteTransaction(transactionId: number): Promise<void> {
-        await this.fetch(q.DELETE_TRANSACTION, transactionId)
+        await this.queryWith(q.DELETE_TRANSACTION, transactionId)
     }
 
     // Deposit
     async createDeposit(transactionId: number, total: number): Promise<tableType.Deposits> {
-        return (await this.fetchFirst(q.CREATE_DEPOSIT, transactionId, total))!
+        return (await this.queryFirstRow(q.CREATE_DEPOSIT, transactionId, total))!
     }
 
     async getDeposit(transactionId: number): Promise<tableType.Deposits | undefined> {
-        return await this.fetchFirst(q.GET_DEPOSIT, transactionId)
+        return await this.queryFirstRow(q.GET_DEPOSIT, transactionId)
     }
 
     async deleteDeposit(transactionId: number): Promise<void> {
-        await this.fetch(q.DELETE_DEPOSIT, transactionId)
+        await this.queryWith(q.DELETE_DEPOSIT, transactionId)
     }
 
     // Purchased items
     async addPurchasedItem(purchaseId: number, quantity: number, purchasePrice: Price, itemId: number, displayName: string, iconUrl?: string): Promise<tableType.PurchasedItems> {
         if (iconUrl) {
-            return (await this.fetchFirst(q.ADD_PURCHASED_ITEM_WITH_ICON, //
+            return (await this.queryFirstRow(q.ADD_PURCHASED_ITEM_WITH_ICON, //
                 purchaseId, quantity, purchasePrice.price, purchasePrice.displayName, itemId, displayName, iconUrl))!
         } else {
-            return (await this.fetchFirst(q.ADD_PURCHASED_ITEM, //
+            return (await this.queryFirstRow(q.ADD_PURCHASED_ITEM, //
                 purchaseId, quantity, purchasePrice.price, purchasePrice.displayName, itemId, displayName))!
         }
     }
 
     async getPurchasedItems(purchaseId: number): Promise<tableType.PurchasedItems[]> {
-        return await this.fetchRows(q.GET_PURCHASED_ITEMS, purchaseId)
+        return await this.queryRows(q.GET_PURCHASED_ITEMS, purchaseId)
     }
 
     async hasBeenPurchased(itemId: number): Promise<boolean> {
-        return await this.fetchExists(q.HAS_BEEN_PURCHASED, itemId)
+        return await this.queryExists(q.HAS_BEEN_PURCHASED, itemId)
     }
 
     // Favorites
-    async addFavorite(userId: UserId, itemId: number): Promise<tableType.FavoriteItems> {
-        const favorite = await this.fetchFirst<tableType.FavoriteItems>(q.GET_FAVORITE_ITEM, userId, itemId)
+    async addFavorite(userId: number, itemId: number): Promise<tableType.FavoriteItems> {
+        const favorite = await this.queryFirstRow<tableType.FavoriteItems>(q.GET_FAVORITE_ITEM, userId, itemId)
         if (favorite) return favorite
-        return (await this.fetchFirst(q.ADD_FAVORITE_ITEM, userId, itemId))!
+        return (await this.queryFirstRow(q.ADD_FAVORITE_ITEM, userId, itemId))!
     }
 
-    async removeFavorite(userId: UserId, itemId: number): Promise<void> {
-        await this.fetch(q.REMOVE_FAVORITE_ITEM, userId, itemId)
+    async removeFavorite(userId: number, itemId: number): Promise<void> {
+        await this.queryWith(q.REMOVE_FAVORITE_ITEM, userId, itemId)
     }
 
-    async isFavorite(userId: UserId, itemId: number): Promise<boolean> {
-        return await this.fetchExists(q.FAVORITE_ITEM_EXISTS, userId, itemId)
+    async isFavorite(userId: number, itemId: number): Promise<boolean> {
+        return await this.queryExists(q.FAVORITE_ITEM_EXISTS, userId, itemId)
     }
 
     // #region Utility
-    private async fetch<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {
+    private async queryWith<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {
         return new Promise(resolve => {
             this.query(query, values).then(response => {
                 resolve(response)
+            }).catch(reason => {
+                throw new DatabaseError(String(reason))
             })
         })
     }
 
-    private async fetchRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
-        return (await this.fetch<T>(query, ...values)).rows
+    private async queryRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
+        return (await this.queryWith<T>(query, ...values)).rows
     }
 
-    private async fetchFirst<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
-        return (await this.fetchRows<T>(query, ...values))[0]
+    private async queryFirstRow<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
+        return (await this.queryRows<T>(query, ...values))[0]
     }
 
-    private async fetchExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
-        return !!(await this.fetchFirst<T>(query, ...values))!.exists
+    private async queryExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
+        return !!(await this.queryFirstRow<T>(query, ...values))!.exists
+    }
+
+    private async queryWithTransaction<T extends QueryResultRow>(queries: string[], returnQuery: string, ...values: unknown[]): Promise<QueryResult<T> | undefined> {
+        let result: QueryResult<T> | undefined = undefined
+        try {
+            await this.queryWith('BEGIN')
+            for (const query of queries) {
+                result = await this.queryWith(query, ...values)
+            }
+            await this.queryWith('COMMIT')
+            return result
+        } catch (error) {
+            await this.queryWith('ROLLBACK')
+            throw error as DatabaseError
+        }
     }
 
     // #endregion Queries

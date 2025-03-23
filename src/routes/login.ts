@@ -71,27 +71,20 @@ export function login(): RequestHandler {
 
             const db = await database()
             const userInfo = await authorizationCode.userInfo()
-            const id: UserId = userInfo.sub
-            const groups = await clientApi.getGroupsFor(id)
+            const gammaUserId: UserId = userInfo.sub
+            const groups = await clientApi.getGroupsFor(gammaUserId)
             const group = getAuthorizedGroup(groups)
             if (!group) {
                 // User is not in the super group
                 sendError(res, ApiError.NoPermission)
                 return
             }
+            const gammaGroupId: GroupId = group.id
 
-            const userExists = await db.userExists(id)
-            if (!userExists) {
-                const groupExists = await db.groupExists(group.id)
-                if (!groupExists) {
-                    await db.createGroup(group.id)
-                }
-                await db.createUser(id, group.id)
-            }
-            const dbUser = (await db.getUser(id))!
+            const dbUser = await db.softCreateGroupAndUser(gammaGroupId, gammaUserId)
 
             signJWT({
-                userId: id,
+                userId: gammaUserId,
                 groupId: group.id,
             })
                 .then(token => {

@@ -93,8 +93,10 @@ export interface JWT {
 }
 
 export interface LocalJwt extends JwtPayload {
-    userId: UserId
-    groupId: GroupId
+    userId: number
+    gammaUserId: UserId
+    groupId: number
+    gammaGroupId: GroupId
 }
 
 export interface LoginResponse extends UserResponse, JWT {

@@ -6,18 +6,19 @@ export interface TableNames extends QueryResultRow {
 }
 
 export interface Users extends QueryResultRow {
+    id: number
     gamma_id: UserId
-    group_id: GroupId
-    balance: number
+    group_id: number
 }
 
 export interface Groups extends QueryResultRow {
+    id: number
     gamma_id: GroupId
 }
 
 export interface Items extends QueryResultRow {
     id: number
-    group_id: GroupId
+    group_id: number
     display_name: string
     icon_url: string | null
     created_time: Date
@@ -33,7 +34,7 @@ export interface Prices extends QueryResultRow {
 
 export interface Transactions extends QueryResultRow {
     id: number
-    group_id: GroupId
+    group_id: number
     created_by: UserId
     created_for: UserId
     created_time: Date
@@ -56,10 +57,42 @@ export interface Deposits extends Transactions {
 }
 
 export interface FavoriteItems extends QueryResultRow {
-    user_id: UserId
+    user_id: number
     item_id: number
 }
 
+// Views
+export interface Purchases extends QueryResultRow {
+    id: number
+    group_id: number
+    created_by: number
+    created_for: number
+    created_time: Date
+    item_id: number
+    display_name: number
+    icon_url: string | null
+    purchase_price: number
+    purchase_price_name: string
+    quantity: number
+}
+
+export interface UsersTotalDeposited extends Users {
+    total: number
+}
+
+export interface UserTotalPurchased extends Users {
+    total: number
+}
+
+export interface UserBalances extends Users {
+    balance: number
+}
+
+export interface FullUser extends UserBalances {
+    group_gamma_id: number
+}
+
+// Function results
 export interface Exists extends QueryResultRow {
     exists: string
 }

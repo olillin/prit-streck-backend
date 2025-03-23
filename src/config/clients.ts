@@ -1,5 +1,5 @@
 import { AuthorizationCode, ClientApi } from 'gammait'
-import DatabaseClient from '../database/client'
+import DatabaseClient, {DatabaseError} from '../database/client'
 import env from './env'
 
 // Database
@@ -20,7 +20,11 @@ process.on('SIGINT', shutdownGracefully)
 process.on('SIGTERM', shutdownGracefully)
 
 export async function database(): Promise<DatabaseClient> {
-    return db.ready()
+    try {
+        return await db.ready()
+    } catch (error) {
+        throw new DatabaseError(String(error))
+    }
 }
 
 // Gamma Authorization Code Flow
