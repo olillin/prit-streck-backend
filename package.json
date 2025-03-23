@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "cd out && node server.js",
     "startenv": "cd out && node --env-file=../.env server.js",
-    "dev": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d",
+    "dev": "docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d --build --force-recreate",
     "rmdevdb": "docker compose down && docker volume rm prit-streck-backend_dev-db-data",
     "cleandev": "npm run rmdevdb && npm run dev",
     "lint": "eslint",
