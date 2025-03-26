@@ -1,5 +1,5 @@
 import { AuthorizationCode, ClientApi } from 'gammait'
-import DatabaseClient, {DatabaseError} from '../database/client'
+import DatabaseClient from '../database/client'
 import env from './env'
 
 // Database
@@ -23,7 +23,7 @@ export async function database(): Promise<DatabaseClient> {
     try {
         return await db.ready()
     } catch (error) {
-        throw new DatabaseError(String(error))
+        throw new Error(`Failed to get database: ${error}`)
     }
 }
 

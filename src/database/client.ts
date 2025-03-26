@@ -9,12 +9,6 @@ const REQUIRED_TABLES = ['deposits', 'favorite_items', 'full_user', 'groups', 'i
 export const legalItemColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
 
-export class DatabaseError extends Error {
-    constructor(message?: string) {
-        super(message);
-    }
-}
-
 class DatabaseClient extends Client {
     isReady: boolean = false
     invalid: boolean = false
@@ -82,7 +76,7 @@ class DatabaseClient extends Client {
     async createGroup(gammaGroupId: GroupId): Promise<tableType.Groups> {
         return (await this.queryFirstRow(q.CREATE_GROUP, gammaGroupId))!
     }
-    
+
     async softCreateGroupAndUser(gammaGroupId: GroupId, gammaUserId: UserId): Promise<tableType.FullUser> {
         return (await this.queryWithTransaction<tableType.FullUser>(
             q.SOFT_CREATE_GROUP_AND_USER, gammaGroupId, gammaUserId
@@ -273,8 +267,6 @@ class DatabaseClient extends Client {
         return new Promise(resolve => {
             this.query(query, values).then(response => {
                 resolve(response)
-            }).catch(reason => {
-                throw new DatabaseError(String(reason))
             })
         })
     }
@@ -302,7 +294,7 @@ class DatabaseClient extends Client {
             return result
         } catch (error) {
             await this.queryWith('ROLLBACK')
-            throw error as DatabaseError
+            throw error
         }
     }
 
