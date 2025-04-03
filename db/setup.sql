@@ -22,7 +22,6 @@ CREATE TABLE items
     display_name    VARCHAR(100) NOT NULL,
     icon_url        VARCHAR(500),
     created_time    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    times_purchased INT          NOT NULL DEFAULT 0,
     visible         BOOLEAN      NOT NULL DEFAULT 't',
     UNIQUE (group_id, display_name),
     PRIMARY KEY (id),
@@ -111,3 +110,11 @@ CREATE VIEW full_user AS
 SELECT u.id, u.gamma_id, u.balance, u.group_id,
        g.gamma_id AS group_gamma_id
 FROM user_balances u LEFT OUTER JOIN groups g on u.group_id = g.id;
+
+CREATE VIEW full_item AS
+SELECT i.id, i.group_id, i.display_name, i.icon_url, i.created_time, i.visible,
+        coalesce((SELECT sum(p.quantity)
+                  FROM purchased_items p
+                  WHERE p.item_id = i.id
+                  ), 0) AS times_purchased
+FROM items i;
