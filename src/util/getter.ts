@@ -5,7 +5,7 @@ import { toDeposit, toItem, toPurchase } from './convert'
 import environment from '../config/env'
 
 // #region Database getters
-export async function item(itemId: number, userId: UserId): Promise<Item> {
+export async function item(itemId: number, userId: number): Promise<Item> {
     const db = await database()
     const [item, prices, favorite] = await Promise.all([
         db.getItem(itemId),

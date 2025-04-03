@@ -78,6 +78,47 @@ class DatabaseClient extends Client {
         })
     };
 
+    // #region Utility
+    private async queryWith<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {
+        return new Promise(resolve => {
+            this.query(query, values).then(response => {
+                resolve(response)
+            }).catch(reason => {
+                throw new DatabaseError(String(reason))
+            })
+        })
+    }
+
+    private async queryRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
+        return (await this.queryWith<T>(query, ...values)).rows
+    }
+
+    private async queryFirstRow<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
+        return (await this.queryRows<T>(query, ...values))[0]
+    }
+
+    private async queryExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
+        return !!(await this.queryFirstRow<T>(query, ...values))!.exists
+    }
+
+    private async queryWithTransaction<T extends QueryResultRow>(queries: string[], ...values: unknown[]): Promise<QueryResult<T> | undefined> {
+        let result: QueryResult<T> | undefined = undefined
+        try {
+            await this.queryWith('BEGIN')
+            for (const query of queries) {
+                result = await this.queryWith(query, ...values)
+            }
+            await this.queryWith('COMMIT')
+            return result
+        } catch (error) {
+            await this.queryWith('ROLLBACK')
+            throw error as DatabaseError
+        }
+    }
+    // #endregion Utility
+
+    // #region Queries
+
     //  Groups
     async createGroup(gammaGroupId: GroupId): Promise<tableType.Groups> {
         return (await this.queryFirstRow(q.CREATE_GROUP, gammaGroupId))!
@@ -105,9 +146,6 @@ class DatabaseClient extends Client {
         return await this.queryExists(q.GAMMA_GROUP_EXISTS, gammaGroupId)
     }
 
-    // #endregion Utility
-
-    // #region Queries
 
     // Users
     async createUser(userId: UserId, groupId: GroupId): Promise<tableType.Users> {
@@ -245,19 +283,9 @@ class DatabaseClient extends Client {
         }
     }
 
-    async getPurchasedItems(purchaseId: number): Promise<tableType.PurchasedItems[]> {
-        return await this.queryRows(q.GET_PURCHASED_ITEMS, purchaseId)
-    }
-
-    async hasBeenPurchased(itemId: number): Promise<boolean> {
-        return await this.queryExists(q.HAS_BEEN_PURCHASED, itemId)
-    }
-
     // Favorites
     async addFavorite(userId: number, itemId: number): Promise<tableType.FavoriteItems> {
-        const favorite = await this.queryFirstRow<tableType.FavoriteItems>(q.GET_FAVORITE_ITEM, userId, itemId)
-        if (favorite) return favorite
-        return (await this.queryFirstRow(q.ADD_FAVORITE_ITEM, userId, itemId))!
+        return (await this.queryWithTransaction<tableType.FavoriteItems>(q.ADD_FAVORITE_ITEM, userId, itemId))!.rows[0]
     }
 
     async removeFavorite(userId: number, itemId: number): Promise<void> {
@@ -267,45 +295,6 @@ class DatabaseClient extends Client {
     async isFavorite(userId: number, itemId: number): Promise<boolean> {
         return await this.queryExists(q.FAVORITE_ITEM_EXISTS, userId, itemId)
     }
-
-    // #region Utility
-    private async queryWith<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {
-        return new Promise(resolve => {
-            this.query(query, values).then(response => {
-                resolve(response)
-            }).catch(reason => {
-                throw new DatabaseError(String(reason))
-            })
-        })
-    }
-
-    private async queryRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
-        return (await this.queryWith<T>(query, ...values)).rows
-    }
-
-    private async queryFirstRow<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
-        return (await this.queryRows<T>(query, ...values))[0]
-    }
-
-    private async queryExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
-        return !!(await this.queryFirstRow<T>(query, ...values))!.exists
-    }
-
-    private async queryWithTransaction<T extends QueryResultRow>(queries: string[], returnQuery: string, ...values: unknown[]): Promise<QueryResult<T> | undefined> {
-        let result: QueryResult<T> | undefined = undefined
-        try {
-            await this.queryWith('BEGIN')
-            for (const query of queries) {
-                result = await this.queryWith(query, ...values)
-            }
-            await this.queryWith('COMMIT')
-            return result
-        } catch (error) {
-            await this.queryWith('ROLLBACK')
-            throw error as DatabaseError
-        }
-    }
-
     // #endregion Queries
 }
 

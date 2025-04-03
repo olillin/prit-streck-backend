@@ -49,8 +49,8 @@ export const SOFT_CREATE_GROUP_AND_USER = [
     VALUES ($2,
             COALESCE((SELECT id FROM group_row),
                      (SELECT id FROM groups WHERE gamma_id = $1)))
-    ON CONFLICT DO NOTHING`,
-    'SELECT * FROM full_user WHERE gamma_id = $2'
+    ON CONFLICT DO NOTHING;`,
+    'SELECT * FROM full_user WHERE gamma_id = $2;'
 ]
 
 export const CREATE_GROUP = 'INSERT INTO groups VALUES ($1) RETURNING *'
@@ -92,10 +92,11 @@ export const DELETE_DEPOSIT = 'DELETE FROM deposits WHERE transaction_id = $1'
 
 export const ADD_PURCHASED_ITEM = 'INSERT INTO purchased_items(transaction_id, quantity, purchase_price, purchase_price_name, item_id, display_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *'
 export const ADD_PURCHASED_ITEM_WITH_ICON = 'INSERT INTO purchased_items(transaction_id, quantity, purchase_price, purchase_price_name, item_id, display_name, icon_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *'
-export const GET_PURCHASED_ITEMS = 'SELECT * FROM purchased_items WHERE transaction_id = $1'
-export const HAS_BEEN_PURCHASED = 'SELECT EXISTS(SELECT * FROM purchased_items WHERE item_id = $1)'
 
-export const ADD_FAVORITE_ITEM = 'INSERT INTO favorite_items(user_id, item_id) VALUES($1, $2)'
-export const REMOVE_FAVORITE_ITEM = 'DELETE FROM favorite_items WHERE user_id = $1 AND item_id = $2'
 export const GET_FAVORITE_ITEM = 'SELECT * FROM favorite_items WHERE user_id = $1 AND item_id = $2'
+export const ADD_FAVORITE_ITEM = [
+    'INSERT INTO favorite_items(user_id, item_id) VALUES($1, $2) ON CONFLICT DO NOTHING;',
+    GET_FAVORITE_ITEM,
+]
+export const REMOVE_FAVORITE_ITEM = 'DELETE FROM favorite_items WHERE user_id = $1 AND item_id = $2'
 export const FAVORITE_ITEM_EXISTS = 'SELECT EXISTS(SELECT * FROM favorite_items WHERE user_id = $1 AND item_id = $2)'
