@@ -6,14 +6,8 @@ import {Price} from '../types'
 
 const REQUIRED_TABLES = ['deposits', 'favorite_items', 'full_user', 'groups', 'items', 'prices', 'purchased_items', 'purchases', 'transactions', 'user_balances', 'users', 'users_total_deposited', 'users_total_purchased',]
 
-export const legalItemColumns = ['id', 'groupid', 'displayname', 'iconurl', 'addedtime', 'timespurchased', 'visible'] as const
+export const legalItemColumns = ['id', 'group_id', 'display_name', 'icon_url', 'created_time', 'visible'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
-
-export class DatabaseError extends Error {
-    constructor(message?: string) {
-        super(message);
-    }
-}
 
 class DatabaseClient extends Client {
     isReady: boolean = false
@@ -32,7 +26,6 @@ class DatabaseClient extends Client {
             }).then(() => this.isReady = true)
             .catch(reason => {
                 console.error('Creating database client failed: ' + reason)
-                this.invalid = true
             })
 
     }
@@ -55,10 +48,12 @@ class DatabaseClient extends Client {
 
                     // All checks pass
                     resolve()
+                    this.invalid = false
                 })
                 .catch(reason => {
                     // Validation failed
                     reject('Database validation failed' + (reason ? `: ${reason}` : ''))
+                    this.invalid = true
                 })
         })
     }
@@ -79,12 +74,20 @@ class DatabaseClient extends Client {
     };
 
     // #region Utility
-    private async queryWith<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<QueryResult<T>> {
+    private async queryWith<T extends QueryResultRow>(statement: string, ...values: unknown[]): Promise<QueryResult<T>>
+    private async queryWith<T extends QueryResultRow>(transaction: string[], ...values: unknown[]): Promise<QueryResult<T>>
+    private async queryWith<T extends QueryResultRow>(query: string | string[], ...values: unknown[]): Promise<QueryResult<T>> {
+        if (typeof query === 'string') {
+            return this.queryWithStatement(query, ...values)
+        } else {
+            return this.queryWithTransaction(query, ...values)
+        }
+    }
+
+    private async queryWithStatement<T extends QueryResultRow>(statement: string, ...values: unknown[]): Promise<QueryResult<T>> {
         return new Promise(resolve => {
-            this.query(query, values).then(response => {
+            this.query(statement, values).then(response => {
                 resolve(response)
-            }).catch(reason => {
-                throw new DatabaseError(String(reason))
             })
         })
     }
@@ -101,18 +104,22 @@ class DatabaseClient extends Client {
         return !!(await this.queryFirstRow<T>(query, ...values))!.exists
     }
 
-    private async queryWithTransaction<T extends QueryResultRow>(queries: string[], ...values: unknown[]): Promise<QueryResult<T> | undefined> {
+    private async queryWithTransaction<T extends QueryResultRow>(statements: string[], ...values: unknown[]): Promise<QueryResult<T>> {
         let result: QueryResult<T> | undefined = undefined
         try {
             await this.queryWith('BEGIN')
-            for (const query of queries) {
-                result = await this.queryWith(query, ...values)
+            for (const statement of statements) {
+                result = await this.queryWithStatement(statement, ...values)
             }
+            if (result === undefined) {
+                throw new Error("Transaction must contain at least one statement")
+            }
+
             await this.queryWith('COMMIT')
             return result
         } catch (error) {
             await this.queryWith('ROLLBACK')
-            throw error as DatabaseError
+            throw error
         }
     }
     // #endregion Utility
@@ -123,7 +130,7 @@ class DatabaseClient extends Client {
     async createGroup(gammaGroupId: GroupId): Promise<tableType.Groups> {
         return (await this.queryFirstRow(q.CREATE_GROUP, gammaGroupId))!
     }
-    
+
     async softCreateGroupAndUser(gammaGroupId: GroupId, gammaUserId: UserId): Promise<tableType.FullUser> {
         return (await this.queryWithTransaction<tableType.FullUser>(
             q.SOFT_CREATE_GROUP_AND_USER, gammaGroupId, gammaUserId
@@ -145,7 +152,6 @@ class DatabaseClient extends Client {
     async gammaGroupExists(gammaGroupId: GroupId): Promise<boolean> {
         return await this.queryExists(q.GAMMA_GROUP_EXISTS, gammaGroupId)
     }
-
 
     // Users
     async createUser(userId: UserId, groupId: GroupId): Promise<tableType.Users> {
@@ -295,7 +301,6 @@ class DatabaseClient extends Client {
     async isFavorite(userId: number, itemId: number): Promise<boolean> {
         return await this.queryExists(q.FAVORITE_ITEM_EXISTS, userId, itemId)
     }
-    // #endregion Queries
 }
 
 export default DatabaseClient
