@@ -9,15 +9,17 @@ const REQUIRED_TABLES = ['deposits', 'favorite_items', 'full_user', 'groups', 'i
 export const legalItemColumns = ['id', 'group_id', 'display_name', 'icon_url', 'created_time', 'visible'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
 
-class DatabaseClient extends Client {
+class DatabaseClient {
+    pg: Client
+
     isReady: boolean = false
     invalid: boolean = false
 
     constructor(config?: string | ClientConfig) {
-        super(config);
+        this.pg = new Client(config);
 
         // Connect to database
-        this.connect()
+        this.pg.connect()
             // Start validation
             .then(() => this.validateDatabase())
             .then(() => {
@@ -74,9 +76,9 @@ class DatabaseClient extends Client {
     };
 
     // #region Utility
-    private async queryWith<T extends QueryResultRow>(statement: string, ...values: unknown[]): Promise<QueryResult<T>>
-    private async queryWith<T extends QueryResultRow>(transaction: string[], ...values: unknown[]): Promise<QueryResult<T>>
-    private async queryWith<T extends QueryResultRow>(query: string | string[], ...values: unknown[]): Promise<QueryResult<T>> {
+    private async query<T extends QueryResultRow>(statement: string, ...values: unknown[]): Promise<QueryResult<T>>
+    private async query<T extends QueryResultRow>(transaction: string[], ...values: unknown[]): Promise<QueryResult<T>>
+    private async query<T extends QueryResultRow>(query: string | string[], ...values: unknown[]): Promise<QueryResult<T>> {
         if (typeof query === 'string') {
             return this.queryWithStatement(query, ...values)
         } else {
@@ -86,14 +88,14 @@ class DatabaseClient extends Client {
 
     private async queryWithStatement<T extends QueryResultRow>(statement: string, ...values: unknown[]): Promise<QueryResult<T>> {
         return new Promise(resolve => {
-            this.query(statement, values).then(response => {
+            this.pg.query(statement, values).then(response => {
                 resolve(response)
             })
         })
     }
 
     private async queryRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
-        return (await this.queryWith<T>(query, ...values)).rows
+        return (await this.query<T>(query, ...values)).rows
     }
 
     private async queryFirstRow<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
@@ -107,7 +109,7 @@ class DatabaseClient extends Client {
     private async queryWithTransaction<T extends QueryResultRow>(statements: string[], ...values: unknown[]): Promise<QueryResult<T>> {
         let result: QueryResult<T> | undefined = undefined
         try {
-            await this.queryWith('BEGIN')
+            await this.query('BEGIN')
             for (const statement of statements) {
                 result = await this.queryWithStatement(statement, ...values)
             }
@@ -115,10 +117,10 @@ class DatabaseClient extends Client {
                 throw new Error("Transaction must contain at least one statement")
             }
 
-            await this.queryWith('COMMIT')
+            await this.query('COMMIT')
             return result
         } catch (error) {
-            await this.queryWith('ROLLBACK')
+            await this.query('ROLLBACK')
             throw error
         }
     }
@@ -224,7 +226,7 @@ class DatabaseClient extends Client {
     }
 
     async deleteItem(itemId: number): Promise<void> {
-        await this.queryWith(q.DELETE_ITEM, itemId)
+        await this.query(q.DELETE_ITEM, itemId)
     }
 
     // Prices
@@ -237,7 +239,7 @@ class DatabaseClient extends Client {
     }
 
     async removePricesForItem(itemId: number): Promise<void> {
-        await this.queryWith(q.REMOVE_PRICES_FOR_ITEM, itemId)
+        await this.query(q.REMOVE_PRICES_FOR_ITEM, itemId)
     }
 
     // Transactions
@@ -262,7 +264,7 @@ class DatabaseClient extends Client {
     }
 
     async deleteTransaction(transactionId: number): Promise<void> {
-        await this.queryWith(q.DELETE_TRANSACTION, transactionId)
+        await this.query(q.DELETE_TRANSACTION, transactionId)
     }
 
     // Deposit
@@ -275,7 +277,7 @@ class DatabaseClient extends Client {
     }
 
     async deleteDeposit(transactionId: number): Promise<void> {
-        await this.queryWith(q.DELETE_DEPOSIT, transactionId)
+        await this.query(q.DELETE_DEPOSIT, transactionId)
     }
 
     // Purchased items
@@ -295,7 +297,7 @@ class DatabaseClient extends Client {
     }
 
     async removeFavorite(userId: number, itemId: number): Promise<void> {
-        await this.queryWith(q.REMOVE_FAVORITE_ITEM, userId, itemId)
+        await this.query(q.REMOVE_FAVORITE_ITEM, userId, itemId)
     }
 
     async isFavorite(userId: number, itemId: number): Promise<boolean> {
