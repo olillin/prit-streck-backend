@@ -91,12 +91,3 @@ export interface UserBalances extends Users {
 export interface FullUser extends UserBalances {
     group_gamma_id: number
 }
-
-// Function results
-export interface Exists extends QueryResultRow {
-    exists: string
-}
-
-export interface Count extends QueryResultRow {
-    count: string
-}

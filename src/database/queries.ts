@@ -53,8 +53,8 @@ export const SOFT_CREATE_GROUP_AND_USER = [
     'SELECT * FROM full_user WHERE gamma_id = $2;'
 ]
 
-export const CREATE_GROUP = 'INSERT INTO groups VALUES ($1) RETURNING *'
-export const GET_GROUP = 'SELECT * FROM groups WHERE id = $1 LIMIT 1'
+export const CREATE_GROUP = 'INSERT INTO groups(gamma_id) VALUES ($1) RETURNING *'
+export const GET_GROUP = 'SELECT * FROM groups(gamma_id) WHERE id = $1 LIMIT 1'
 export const GET_GROUPS = 'SELECT id FROM groups'
 export const GROUP_EXISTS = 'SELECT EXISTS(SELECT * FROM groups WHERE id = $1)'
 export const GAMMA_GROUP_EXISTS = 'SELECT EXISTS(SELECT * FROM groups WHERE gamma_id = $1)'

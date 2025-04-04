@@ -41,6 +41,9 @@ class DatabaseClient {
             // Get database tables
             this.queryRows<tableType.TableNames>(q.GET_TABLES)
                 .then(tables => {
+                    if (!tables) {
+                        throw "Could not get tables"
+                    }
                     // Check if all required tables exist
                     const existingTables = tables.map(row => row.table_name)
                     const missingTables = REQUIRED_TABLES.filter(table => !existingTables.includes(table));
@@ -76,53 +79,155 @@ class DatabaseClient {
     };
 
     // #region Utility
-    private async query<T extends QueryResultRow>(statement: string, ...values: unknown[]): Promise<QueryResult<T>>
-    private async query<T extends QueryResultRow>(transaction: string[], ...values: unknown[]): Promise<QueryResult<T>>
-    private async query<T extends QueryResultRow>(query: string | string[], ...values: unknown[]): Promise<QueryResult<T>> {
+    /**
+     * Query a statement or transaction
+     * @param query the query
+     * @param args the query arguments
+     * @private
+     */
+    private async query<T extends QueryResultRow>(query: string | string[], ...args: unknown[]): Promise<QueryResult<T> | undefined> {
         if (typeof query === 'string') {
-            return this.queryWithStatement(query, ...values)
+            return this.queryWithStatement(query, ...args)
         } else {
-            return this.queryWithTransaction(query, ...values)
+            return this.queryWithTransaction(query, ...args)
         }
     }
 
-    private async queryWithStatement<T extends QueryResultRow>(statement: string, ...values: unknown[]): Promise<QueryResult<T>> {
+    /**
+     * Query a statement
+     * @param statement a statement
+     * @param args the query arguments
+     * @return the result of the statement
+     * @private
+     */
+    private async queryWithStatement<T extends QueryResultRow>(statement: string, ...args: unknown[]): Promise<QueryResult<T>> {
         return new Promise(resolve => {
-            this.pg.query(statement, values).then(response => {
+            this.pg.query(statement, args).then(response => {
                 resolve(response)
             })
         })
     }
 
-    private async queryRows<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T[]> {
-        return (await this.query<T>(query, ...values)).rows
-    }
+    /**
+     * Query a transaction
+     * @param transaction a transaction, which is a list of statements
+     * @param args the query arguments
+     * @throws Error if the transaction is empty
+     * @throws DatabaseError if the transaction fails
+     * @return the result of the last statement that returned a value, or `undefined` if no statements returned a value
+     * @private
+     */
+    private async queryWithTransaction<T extends QueryResultRow>(transaction: string[], ...args: unknown[]): Promise<QueryResult<T> | undefined> {
+        if (transaction.length === 0) {
+            throw new Error("Transaction must contain at least one statement")
+        }
 
-    private async queryFirstRow<T extends QueryResultRow>(query: string, ...values: unknown[]): Promise<T | undefined> {
-        return (await this.queryRows<T>(query, ...values))[0]
-    }
-
-    private async queryExists<T extends tableType.Exists>(query: string, ...values: unknown[]): Promise<boolean> {
-        return !!(await this.queryFirstRow<T>(query, ...values))!.exists
-    }
-
-    private async queryWithTransaction<T extends QueryResultRow>(statements: string[], ...values: unknown[]): Promise<QueryResult<T>> {
-        let result: QueryResult<T> | undefined = undefined
+        let lastResult: QueryResult<T> | undefined = undefined
         try {
             await this.query('BEGIN')
-            for (const statement of statements) {
-                result = await this.queryWithStatement(statement, ...values)
-            }
-            if (result === undefined) {
-                throw new Error("Transaction must contain at least one statement")
+            for (const statement of transaction) {
+                const result = await this.queryWithStatement<T>(statement, ...args)
+                if (result.rowCount !== null) {
+                    lastResult = result
+                }
             }
 
             await this.query('COMMIT')
-            return result
+            return lastResult
         } catch (error) {
             await this.query('ROLLBACK')
             throw error
         }
+    }
+
+    /**
+     * Get the rows returned by a query
+     * @param query a statement or transaction
+     * @param args the query arguments
+     * @throws Error if the query result is empty
+     * @return the rows returned, or `undefined` if no rows were returned
+     * @private
+     */
+    private async queryRows<T extends QueryResultRow>(query: string | string[], ...args: unknown[]): Promise<T[]|undefined> {
+        return (await this.query<T>(query, ...args))?.rows
+    }
+
+    /**
+     * Get the first row returned by a query
+     * @param query a statement or transaction
+     * @param args the query arguments
+     * @return the first row returned, or `undefined` if no rows were returned
+     * @private
+     */
+    private async queryFirstRow<T extends QueryResultRow>(query: string | string[], ...args: unknown[]): Promise<T|undefined> {
+        const rows = await this.queryRows<T>(query, ...args)
+        if (!rows || rows.length === 0)
+            return undefined
+        return rows[0]
+    }
+
+    /**
+     * Get the first value of the first row. Should only be used with queries which only return one column, as Postgres
+     * does not care about a column order.
+     * @param query a statement or transaction
+     * @param args the query arguments
+     * @throws Error if the query result is empty
+     * @private
+     */
+    private async queryFirstValue(query: string | string[], ...args: unknown[]): Promise<unknown> {
+        const row = await this.queryFirstRow(query, ...args)
+        if (!row) throw new Error('Cannot get value, query result is empty')
+        const values = Object.values(row)
+        if (values.length === 0) throw new Error('Cannot get value, query result is empty')
+        return values[0]
+    }
+
+    /**
+     * Get the first value of the first row as a boolean. Should only be used with queries which only return one column,
+     * as Postgres does not care about column order.
+     * @param query a statement or transaction
+     * @param args the query arguments
+     * @throws Error if the query result is empty
+     * @private
+     */
+    private async queryFirstBoolean(query: string | string[], ...args: unknown[]): Promise<boolean> {
+        return !!(await this.queryFirstValue(query, ...args))
+    }
+
+    /**
+     * Get the first value of the first row as a string. Should only be used with queries which only return one column,
+     * as Postgres does not care about column order.
+     * @param query a statement or transaction
+     * @param args the query arguments
+     * @throws Error if the query result is empty
+     * @private
+     */
+    private async queryFirstString(query: string | string[], ...args: unknown[]): Promise<string> {
+        return String(await this.queryFirstValue(query, ...args))
+    }
+
+    /**
+     * Get the first value of the first row as an integer. Should only be used with queries which only return one
+     * column, as Postgres does not care about column order.
+     * @param query a statement or transaction
+     * @param args the query arguments
+     * @throws Error if the query result is empty
+     * @private
+     */
+    private async queryFirstInt(query: string | string[], ...args: unknown[]): Promise<number> {
+        return parseInt(await this.queryFirstString(query, ...args))
+    }
+
+    /**
+     * Get the first value of the first row as a float. Should only be used with queries which only return one column,
+     * as Postgres does not care about column order.
+     * @param query a statement or transaction
+     * @param args the query arguments
+     * @throws Error if the query result is empty
+     * @private
+     */
+    private async queryFirstFloat(query: string | string[], ...args: unknown[]): Promise<number> {
+        return parseFloat(await this.queryFirstString(query, ...args))
     }
     // #endregion Utility
 
@@ -130,7 +235,7 @@ class DatabaseClient {
 
     //  Groups
     async createGroup(gammaGroupId: GroupId): Promise<tableType.Groups> {
-        return (await this.queryFirstRow(q.CREATE_GROUP, gammaGroupId))!
+        return (await this.queryFirstRow<tableType.Groups>(q.CREATE_GROUP, gammaGroupId))!
     }
 
     async softCreateGroupAndUser(gammaGroupId: GroupId, gammaUserId: UserId): Promise<tableType.FullUser> {
@@ -140,7 +245,7 @@ class DatabaseClient {
     }
 
     async getGroup(groupId: number): Promise<tableType.Groups | undefined> {
-        return await this.queryFirstRow(q.GET_GROUP, groupId)
+        return await this.queryFirstRow<tableType.Groups>(q.GET_GROUP, groupId)
     }
 
     async getGroups(): Promise<tableType.Groups[]> {
@@ -148,11 +253,11 @@ class DatabaseClient {
     }
 
     async groupExists(groupId: number): Promise<boolean> {
-        return await this.queryExists(q.GROUP_EXISTS, groupId)
+        return await this.queryFirstBoolean(q.GROUP_EXISTS, groupId)
     }
 
     async gammaGroupExists(gammaGroupId: GroupId): Promise<boolean> {
-        return await this.queryExists(q.GAMMA_GROUP_EXISTS, gammaGroupId)
+        return await this.queryFirstBoolean(q.GAMMA_GROUP_EXISTS, gammaGroupId)
     }
 
     // Users
@@ -161,7 +266,7 @@ class DatabaseClient {
     }
 
     async getUser(userId: number): Promise<tableType.Users | undefined> {
-        return await this.queryFirstRow(q.GET_USER, userId)
+        return await this.queryFirstRow<tableType.Users>(q.GET_USER, userId)
     }
 
     async getUsersInGroup(groupId: number): Promise<tableType.Users[]> {
@@ -173,7 +278,7 @@ class DatabaseClient {
     }
 
     async userExists(userId: number): Promise<boolean> {
-        return await this.queryExists(q.USER_EXISTS, userId)
+        return await this.queryFirstBoolean(q.USER_EXISTS, userId)
     }
 
     // Items
@@ -186,7 +291,7 @@ class DatabaseClient {
     }
 
     async getItem(itemId: number): Promise<tableType.Items | undefined> {
-        return await this.queryFirstRow(q.GET_ITEM, itemId)
+        return await this.queryFirstRow<tableType.Items>(q.GET_ITEM, itemId)
     }
 
     async getItemsInGroup(groupId: number): Promise<tableType.Items[]> {
@@ -210,15 +315,15 @@ class DatabaseClient {
     }
 
     async itemExists(itemId: number): Promise<boolean> {
-        return await this.queryExists(q.ITEM_EXISTS, itemId)
+        return await this.queryFirstBoolean(q.ITEM_EXISTS, itemId)
     }
 
     async itemExistsInGroup(itemId: number, groupId: number): Promise<boolean> {
-        return await this.queryExists(q.ITEM_EXISTS_IN_GROUP, itemId, groupId)
+        return await this.queryFirstBoolean(q.ITEM_EXISTS_IN_GROUP, itemId, groupId)
     }
 
     async itemNameExistsInGroup(name: string, groupId: number): Promise<boolean> {
-        return await this.queryExists(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId)
+        return await this.queryFirstBoolean(q.ITEM_NAME_EXISTS_IN_GROUP, name, groupId)
     }
 
     async isItemVisible(itemId: number): Promise<boolean> {
@@ -252,11 +357,11 @@ class DatabaseClient {
     }
 
     async transactionExistsInGroup(transactionId: number, groupId: number): Promise<boolean> {
-        return await this.queryExists(q.TRANSACTION_EXISTS_IN_GROUP, transactionId, groupId)
+        return await this.queryFirstBoolean(q.TRANSACTION_EXISTS_IN_GROUP, transactionId, groupId)
     }
 
     async countTransactionsInGroup(groupId: number): Promise<number> {
-        return parseInt((await this.queryFirstRow<tableType.Count>(q.COUNT_TRANSACTIONS_IN_GROUP, groupId))!.count)
+        return await this.queryFirstInt(q.COUNT_TRANSACTIONS_IN_GROUP, groupId)
     }
 
     async getTransactionsInGroup(groupId: number): Promise<tableType.Transactions[]> {
@@ -301,7 +406,7 @@ class DatabaseClient {
     }
 
     async isFavorite(userId: number, itemId: number): Promise<boolean> {
-        return await this.queryExists(q.FAVORITE_ITEM_EXISTS, userId, itemId)
+        return await this.queryFirstBoolean(q.FAVORITE_ITEM_EXISTS, userId, itemId)
     }
 }
 
