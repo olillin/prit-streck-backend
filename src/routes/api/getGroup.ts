@@ -1,7 +1,7 @@
 import {NextFunction, Request, Response} from "express";
 import {clientApi, database} from "../../config/clients";
-import {GroupId, UserId} from "gammait";
-import {getGroupId, getGammaUserId, getUserId} from "../../middleware/validateToken";
+import {UserId} from "gammait";
+import {getGroupId, getGammaUserId} from "../../middleware/validateToken";
 import {getAuthorizedGroup} from "../../util/getter";
 import {ApiError, sendError} from "../../errors";
 import * as convert from "../../util/convert";
@@ -9,8 +9,6 @@ import {GroupResponse, ResponseBody, User} from "../../types";
 
 export default async function getGroup(req: Request, res: Response, next: NextFunction) {
     try {
-        const db = await database()
-
         const userGammaId: UserId = getGammaUserId(res)
         const groupId = getGroupId(res)
 
@@ -26,7 +24,7 @@ export default async function getGroup(req: Request, res: Response, next: NextFu
         // Get members
         let userPromises: Promise<User>[]
         try {
-            userPromises = (await db.getUsersInGroup(groupId)).map(async dbUser => {
+            userPromises = (await database.getFullUsersInGroup(groupId)).map(async dbUser => {
                 const gammaUser = await clientApi.getUser(dbUser.gammaid)
                 return convert.toUser(dbUser, gammaUser)
             })

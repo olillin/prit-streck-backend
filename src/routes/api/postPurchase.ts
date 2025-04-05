@@ -8,8 +8,6 @@ import * as tableType from "../../database/types";
 import * as getter from "../../util/getter";
 
 export default async function postPurchase(req: Request, res: Response) {
-    const db = await database()
-
     const {userId: createdFor, items} = req.body as PostPurchaseBody
 
     const userId: UserId = getUserId(res)

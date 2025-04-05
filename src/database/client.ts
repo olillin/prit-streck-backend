@@ -29,7 +29,6 @@ class DatabaseClient {
             .catch(reason => {
                 console.error('Creating database client failed: ' + reason)
             })
-
     }
 
     /**
@@ -76,7 +75,11 @@ class DatabaseClient {
             }
             check()
         })
-    };
+    }
+
+    end(){
+        return this.pg.end()
+    }
 
     // #region Utility
     /**
@@ -101,6 +104,12 @@ class DatabaseClient {
      * @private
      */
     private async queryWithStatement<T extends QueryResultRow>(statement: string, ...args: unknown[]): Promise<QueryResult<T>> {
+        try {
+            await this.ready()
+        } catch (error) {
+            throw new Error(`Failed to get database: ${error}`)
+        }
+
         return new Promise(resolve => {
             this.pg.query(statement, args).then(response => {
                 resolve(response)
@@ -145,11 +154,11 @@ class DatabaseClient {
      * @param query a statement or transaction
      * @param args the query arguments
      * @throws Error if the query result is empty
-     * @return the rows returned, or `undefined` if no rows were returned
+     * @return the rows returned
      * @private
      */
-    private async queryRows<T extends QueryResultRow>(query: string | string[], ...args: unknown[]): Promise<T[]|undefined> {
-        return (await this.query<T>(query, ...args))?.rows
+    private async queryRows<T extends QueryResultRow>(query: string | string[], ...args: unknown[]): Promise<T[]> {
+        return (await this.query<T>(query, ...args))?.rows ?? []
     }
 
     /**
@@ -161,7 +170,7 @@ class DatabaseClient {
      */
     private async queryFirstRow<T extends QueryResultRow>(query: string | string[], ...args: unknown[]): Promise<T|undefined> {
         const rows = await this.queryRows<T>(query, ...args)
-        if (!rows || rows.length === 0)
+        if (rows.length === 0)
             return undefined
         return rows[0]
     }
@@ -238,6 +247,12 @@ class DatabaseClient {
         return (await this.queryFirstRow<tableType.Groups>(q.CREATE_GROUP, gammaGroupId))!
     }
 
+    /**
+     * Create a group and user if they do not exist
+     * @param gammaGroupId group id from Gamma
+     * @param gammaUserId user id from Gamma
+     * @return the full information of the user with `gammaUserId` in the group with `gammaGroupId`
+     */
     async softCreateGroupAndUser(gammaGroupId: GroupId, gammaUserId: UserId): Promise<tableType.FullUser> {
         return (await this.queryWithTransaction<tableType.FullUser>(
             q.SOFT_CREATE_GROUP_AND_USER, gammaGroupId, gammaUserId
@@ -246,10 +261,6 @@ class DatabaseClient {
 
     async getGroup(groupId: number): Promise<tableType.Groups | undefined> {
         return await this.queryFirstRow<tableType.Groups>(q.GET_GROUP, groupId)
-    }
-
-    async getGroups(): Promise<tableType.Groups[]> {
-        return await this.queryRows(q.GET_GROUPS)
     }
 
     async groupExists(groupId: number): Promise<boolean> {
@@ -273,12 +284,20 @@ class DatabaseClient {
         return await this.queryRows(q.GET_USERS_IN_GROUP, groupId)
     }
 
+    async getFullUsersInGroup(groupId: number): Promise<tableType.FullUser[]> {
+        return await this.queryRows(q.GET_FULL_USERS_IN_GROUP, groupId)
+    }
+
     async setBalance(userId: number, balance: number) {
         return await this.queryFirstRow(q.SET_BALANCE, userId, balance)
     }
 
-    async userExists(userId: number): Promise<boolean> {
-        return await this.queryFirstBoolean(q.USER_EXISTS, userId)
+    // async userExists(userId: number): Promise<boolean> {
+    //     return await this.queryFirstBoolean(q.USER_EXISTS, userId)
+    // }
+
+    async userExistsInGroup(userId: number, groupId: number): Promise<boolean> {
+        return await this.queryFirstBoolean(q.USER_EXISTS_IN_GROUP, userId, groupId)
     }
 
     // Items
@@ -314,9 +333,9 @@ class DatabaseClient {
         return row
     }
 
-    async itemExists(itemId: number): Promise<boolean> {
-        return await this.queryFirstBoolean(q.ITEM_EXISTS, itemId)
-    }
+    // async itemExists(itemId: number): Promise<boolean> {
+    //     return await this.queryFirstBoolean(q.ITEM_EXISTS, itemId)
+    // }
 
     async itemExistsInGroup(itemId: number, groupId: number): Promise<boolean> {
         return await this.queryFirstBoolean(q.ITEM_EXISTS_IN_GROUP, itemId, groupId)
@@ -327,12 +346,21 @@ class DatabaseClient {
     }
 
     async isItemVisible(itemId: number): Promise<boolean> {
-        return (await this.getItem(itemId))?.visible === true
+        return await this.queryFirstBoolean(q.IS_ITEM_VISIBLE, itemId)
     }
 
     async deleteItem(itemId: number): Promise<void> {
         await this.query(q.DELETE_ITEM, itemId)
     }
+
+    async getFullItemWithPrices(itemId: number, userId: number): Promise<tableType.FullItemWithPrices[]> {
+        return await this.queryRows(q.GET_FULL_ITEM_WITH_PRICES, itemId, userId)
+    }
+
+    async getFullItemsWithPricesInGroup(groupId: number, userId: number): Promise<tableType.FullItemWithPrices[]> {
+        return await this.queryRows(q.GET_FULL_ITEMS_WITH_PRICES_IN_GROUP, groupId, userId)
+    }
+
 
     // Prices
     async addPrice(itemId: number, price: number, displayName: string): Promise<tableType.Prices> {
@@ -368,9 +396,9 @@ class DatabaseClient {
         return await this.queryRows(q.GET_TRANSACTIONS_IN_GROUP, groupId)
     }
 
-    async deleteTransaction(transactionId: number): Promise<void> {
-        await this.query(q.DELETE_TRANSACTION, transactionId)
-    }
+    // async deleteTransaction(transactionId: number): Promise<void> {
+    //     await this.query(q.DELETE_TRANSACTION, transactionId)
+    // }
 
     // Deposit
     async createDeposit(transactionId: number, total: number): Promise<tableType.Deposits> {

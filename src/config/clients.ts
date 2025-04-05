@@ -3,7 +3,7 @@ import DatabaseClient from '../database/client'
 import env from './env'
 
 // Database
-const db = new DatabaseClient({
+export const database = new DatabaseClient({
     user: env.PGUSER,
     password: env.PGPASSWORD,
     host: env.PGHOST,
@@ -12,20 +12,12 @@ const db = new DatabaseClient({
 })
 async function shutdownGracefully(): Promise<void> {
     console.log('Shutting down gracefully')
-    await db.end()
+    await database.end()
     console.log('Database connection closed')
     process.exit(0)
 }
 process.on('SIGINT', shutdownGracefully)
 process.on('SIGTERM', shutdownGracefully)
-
-export async function database(): Promise<DatabaseClient> {
-    try {
-        return await db.ready()
-    } catch (error) {
-        throw new Error(`Failed to get database: ${error}`)
-    }
-}
 
 // Gamma Authorization Code Flow
 export const authorizationCode = new AuthorizationCode({

@@ -1,68 +1,86 @@
 import { body, Meta, oneOf, param, query } from 'express-validator'
-import { GroupId, UserId } from 'gammait'
 import { database } from '../config/clients'
 import { verifyToken } from './validateToken'
 import { ApiError } from '../errors'
 
-export async function checkUserExists(value: string): Promise<void> {
-    const db = await database()
-    const exists = await db.userExists(value as UserId)
-    if (!exists) {
-        throw ApiError.UserNotExist
-    }
-}
-
-function getGroupId(meta: Meta): GroupId {
+//#region Util
+function getGroupId(meta: Meta): number {
     const auth = meta.req.headers?.authorization
     const token = auth.split(' ')[1]
     const jwt = verifyToken(token)
     const { groupId } = jwt
     return groupId
 }
+//#endregion Util
 
-export async function checkItemExists(
+//#region Custom validators
+/** Checks that there exists a user with the id in `value` in the same group as the user making the request. */
+export async function checkUserExistsInGroup(value: string, meta: Meta): Promise<void> {
+    // Get user ID
+    let userId: number
+    try {
+        userId = parseInt(value)
+    } catch {
+        throw ApiError.InvalidUserId
+    }
+
+    // Check if user exists
+    const groupId = getGroupId(meta)
+    const exists = await database.userExistsInGroup(userId, groupId)
+    if (!exists) {
+        throw ApiError.UserNotExist
+    }
+}
+
+export async function checkItemExistsInGroup(
     value: string,
     meta: Meta
 ): Promise<void> {
-    const db = await database()
     const groupId = getGroupId(meta)
-    const exists = await db.itemExistsInGroup(parseInt(value), groupId)
+    const exists = await database.itemExistsInGroup(parseInt(value), groupId)
     if (!exists) {
         throw ApiError.ItemNotExist
     }
 }
 
-export async function checkTransactionExists(
+export async function checkTransactionExistsInGroup(
     value: string,
     meta: Meta
 ): Promise<void> {
-    const db = await database()
     const groupId = getGroupId(meta)
-    const exists = await db.transactionExistsInGroup(parseInt(value), groupId)
+    const exists = await database.transactionExistsInGroup(parseInt(value), groupId)
     if (!exists) {
         throw ApiError.TransactionNotExist
     }
 }
 
-export async function checkPurchasedItemVisible(value: string): Promise<void> {
-    const db = await database()
-    const visible = await db.isItemVisible(parseInt(value))
+export async function checkItemVisible(value: string): Promise<void> {
+    // Get id
+    let id: number
+    try {
+        id = parseInt(value)
+    } catch {
+        throw ApiError.InvalidItemId
+    }
+
+    // Check if visible
+    const visible = await database.isItemVisible(id)
     if (!visible) {
         throw ApiError.PurchaseInvisible
     }
 }
 
-export async function checkDisplayNameUnique(
+export async function checkDisplayNameUniqueInGroup(
     value: string,
     meta: Meta
 ): Promise<void> {
-    const db = await database()
     const groupId = getGroupId(meta)
-    const nameExists = await db.itemNameExistsInGroup(value, groupId)
+    const nameExists = await database.itemNameExistsInGroup(value, groupId)
     if (nameExists) {
         throw ApiError.DisplayNameNotUnique
     }
 }
+//#endregion Custom validators
 
 // Validation chains
 export const login = () => [
@@ -90,33 +108,31 @@ export const getTransactions = () => [
 export const getTransaction = () => [
     param('id')
         .exists()
-        .isInt()
+        .isInt({ min: 1 })
         .withMessage(ApiError.InvalidTransactionId)
         .bail()
-        .custom(checkTransactionExists),
+        .custom(checkTransactionExistsInGroup),
 ]
 
 export const postPurchase = () => [
     body('userId')
         .exists()
-        .isString()
-        .trim()
-        .isUUID()
+        .isInt({ min: 1 })
         .withMessage(ApiError.InvalidUserId)
         .bail()
-        .custom(checkUserExists),
+        .custom(checkUserExistsInGroup),
     body('items')
         .exists()
         .isArray({ min: 1 })
         .withMessage(ApiError.PurchaseNothing),
     body('items.*.id')
         .exists()
-        .isInt()
+        .isInt({ min: 1 })
         .withMessage(ApiError.InvalidItemId)
         .bail()
-        .custom(checkItemExists)
+        .custom(checkItemExistsInGroup)
         .bail()
-        .custom(checkPurchasedItemVisible)
+        .custom(checkItemVisible)
         .withMessage(ApiError.PurchaseInvisible),
     body('items.*.quantity')
         .exists()
@@ -135,7 +151,7 @@ export const postDeposit = () => [
         .isUUID()
         .withMessage(ApiError.InvalidUserId)
         .bail()
-        .custom(checkUserExists),
+        .custom(checkUserExistsInGroup),
     body('total').exists().isDecimal().withMessage(ApiError.InvalidTotal),
 ]
 
@@ -166,7 +182,7 @@ export const postItem = () => [
         .trim()
         .notEmpty()
         .bail()
-        .custom(checkDisplayNameUnique),
+        .custom(checkDisplayNameUniqueInGroup),
     body('prices')
         .exists()
         .isArray({ min: 1 })
@@ -179,19 +195,19 @@ export const postItem = () => [
 export const getItem = () => [
     param('id')
         .exists()
-        .isInt()
+        .isInt({ min: 1 })
         .withMessage(ApiError.InvalidItemId)
         .bail()
-        .custom(checkItemExists),
+        .custom(checkItemExistsInGroup),
 ]
 
 export const patchItem = () => [
     param('id')
         .exists()
-        .isInt()
+        .isInt({ min: 1})
         .withMessage(ApiError.InvalidItemId)
         .bail()
-        .custom(checkItemExists),
+        .custom(checkItemExistsInGroup),
     oneOf([
         body('icon')
             .optional()
@@ -206,7 +222,7 @@ export const patchItem = () => [
         .optional()
         .isString()
         .trim()
-        .custom(checkDisplayNameUnique),
+        .custom(checkDisplayNameUniqueInGroup),
     body('prices')
         .optional()
         .isArray({ min: 1 })
@@ -217,5 +233,10 @@ export const patchItem = () => [
 ]
 
 export const deleteItem = () => [
-    param('id').exists().isInt().bail().custom(checkItemExists),
+    param('id')
+        .exists()
+        .isInt({ min: 1})
+        .withMessage(ApiError.InvalidItemId)
+        .bail()
+        .custom(checkItemExistsInGroup),
 ]

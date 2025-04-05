@@ -8,8 +8,6 @@ import * as tableType from "../../database/types";
 import * as convert from "../../util/convert";
 
 export default async function postDeposit(req: Request, res: Response) {
-    const db = await database()
-
     const { userId: createdFor, total } = req.body as PostDepositBody
 
     const userId: UserId = getUserId(res)

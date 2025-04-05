@@ -62,8 +62,10 @@ export const GAMMA_GROUP_EXISTS = 'SELECT EXISTS(SELECT * FROM groups WHERE gamm
 export const CREATE_USER = 'INSERT INTO users(gamma_id, group_id) VALUES ($1, $2) RETURNING *'
 export const GET_USER = 'SELECT * FROM users WHERE gamma_id = $1 LIMIT 1'
 export const GET_USERS_IN_GROUP = 'SELECT * FROM users WHERE group_id = $1'
+export const GET_FULL_USERS_IN_GROUP = 'SELECT * FROM full_user WHERE group_id = $1'
 export const SET_BALANCE = 'UPDATE users SET balance = $2 WHERE gamma_id = $1 RETURNING *'
 export const USER_EXISTS = 'SELECT EXISTS(SELECT * FROM users WHERE gamma_id = $1)'
+export const USER_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM users WHERE gamma_id = $1 AND group_id = $2)'
 
 export const CREATE_ITEM = 'INSERT INTO items(group_id, display_name) VALUES ($1, $2) RETURNING *'
 export const CREATE_ITEM_WITH_ICON = 'INSERT INTO items(group_id, display_name, icon_url) VALUES ($1, $2, $3) RETURNING *'
@@ -73,7 +75,32 @@ export const UPDATE_ITEM = (columnName: string) => `UPDATE items SET ${columnNam
 export const ITEM_EXISTS = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1)'
 export const ITEM_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1 AND group_id = $2)'
 export const ITEM_NAME_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE display_name = $1 AND group_id = $2)'
+export const IS_ITEM_VISIBLE = 'SELECT (visible) FROM items WHERE id = $1'
 export const DELETE_ITEM = 'DELETE FROM items WHERE id = $1'
+export const GET_FULL_ITEM_WITH_PRICES = `SELECT 
+    i.id,
+    i.group_id,
+    i.display_name,
+    i.icon_url,
+    i.created_time,
+    i.visible,
+    i.times_purchased,
+    EXISTS(SELECT * FROM favorite_items WHERE item_id = $1 AND user_id = $2) AS favorite,
+    p.price,
+    p.display_name AS price_display_name
+  FROM full_item i LEFT JOIN prices p ON p.item_id = i.id WHERE i.id = $1`
+export const GET_FULL_ITEMS_WITH_PRICES_IN_GROUP = `SELECT 
+    i.id,
+    i.group_id,
+    i.display_name,
+    i.icon_url,
+    i.created_time,
+    i.visible,
+    i.times_purchased,
+    EXISTS(SELECT * FROM favorite_items WHERE item_id = $1 AND user_id = $2) AS favorite,
+    p.price,
+    p.display_name AS price_display_name
+  FROM full_item i LEFT JOIN prices p ON p.item_id = i.id WHERE i.group_id = $1`
 
 export const CREATE_PRICE = 'INSERT INTO prices(item_id, price, display_name) VALUES ($1, $2, $3) RETURNING *'
 export const GET_PRICES_FOR_ITEM = 'SELECT * FROM prices WHERE item_id = $1 ORDER BY price ASC'

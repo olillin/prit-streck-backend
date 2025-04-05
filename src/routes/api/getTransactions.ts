@@ -6,7 +6,6 @@ import {ResponseBody, Transaction, TransactionsResponse, TransactionType} from "
 import * as convert from "../../util/convert";
 
 export default async function getTransactions(req: Request, res: Response) {
-    const db = await database()
     const limit = parseInt(req.query.limit as string)
     const offset = parseInt(req.query.offset as string)
 

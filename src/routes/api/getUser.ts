@@ -8,8 +8,6 @@ import {ResponseBody, UserResponse} from "../../types";
 import * as convert from "../../util/convert";
 
 export default async function getUser(req: Request, res: Response) {
-    const db = await database()
-
     const userId: UserId = getUserId(res)
     console.log(`Getting user info for: ${userId}`)
 

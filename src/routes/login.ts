@@ -69,7 +69,6 @@ export function login(): RequestHandler {
                 return
             }
 
-            const db = await database()
             const userInfo = await authorizationCode.userInfo()
             const gammaUserId: UserId = userInfo.sub
             const groups = await clientApi.getGroupsFor(gammaUserId)
@@ -81,7 +80,7 @@ export function login(): RequestHandler {
             }
             const gammaGroupId: GroupId = group.id
 
-            const dbUser = await db.softCreateGroupAndUser(gammaGroupId, gammaUserId)
+            const dbUser = await database.softCreateGroupAndUser(gammaGroupId, gammaUserId)
 
             signJWT({
                 userId: gammaUserId,

@@ -22,8 +22,11 @@ export interface Items extends QueryResultRow {
     display_name: string
     icon_url: string | null
     created_time: Date
-    times_purchased: number
     visible: boolean
+}
+
+export interface FullItem extends Items {
+    times_purchased: number
 }
 
 export interface Prices extends QueryResultRow {
@@ -90,4 +93,11 @@ export interface UserBalances extends Users {
 
 export interface FullUser extends UserBalances {
     group_gamma_id: number
+}
+
+export interface FullItemWithPrices extends FullItem {
+    favorite: boolean
+
+    price: number
+    price_display_name: string
 }

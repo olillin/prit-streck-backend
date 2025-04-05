@@ -8,7 +8,6 @@ import * as getter from "../../util/getter";
 import {sendError, unexpectedError} from "../../errors";
 
 export default async function patchItem(req: Request, res: Response) {
-    const db = await database()
     const userId: UserId = getUserId(res)
 
     const itemId = parseInt(req.params.id)

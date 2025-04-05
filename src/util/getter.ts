@@ -6,7 +6,6 @@ import environment from '../config/env'
 
 // #region Database getters
 export async function item(itemId: number, userId: number): Promise<Item> {
-    const db = await database()
     const [item, prices, favorite] = await Promise.all([
         db.getItem(itemId),
         db.getPricesForItem(itemId),
@@ -19,7 +18,6 @@ export async function item(itemId: number, userId: number): Promise<Item> {
 }
 
 export async function purchase(purchaseId: number): Promise<Purchase> {
-    const db = await database()
     const [transaction, purchasedItems] = await Promise.all([
         db.getTransaction(purchaseId),
         db.getPurchasedItems(purchaseId),
@@ -31,7 +29,6 @@ export async function purchase(purchaseId: number): Promise<Purchase> {
 }
 
 export async function deposit(depositId: number): Promise<Deposit> {
-    const db = await database()
     const [transaction, deposit] = await Promise.all([
         db.getTransaction(depositId),
         db.getDeposit(depositId),

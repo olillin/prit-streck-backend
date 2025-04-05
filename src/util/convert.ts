@@ -14,23 +14,49 @@ import * as gamma from 'gammait'
 import { groupAvatarUrl, userAvatarUrl } from 'gammait/urls'
 import { Item, User } from '../types'
 
+export function splitFullItemWithPrices(
+    fullItemWithPrices: tableType.FullItemWithPrices[]
+): [tableType.FullItem, tableType.Prices[], boolean] {
+    if (fullItemWithPrices.length === 0) {
+        throw new Error('Item is empty')
+    }
+
+    const item: tableType.FullItem = {
+        id: fullItemWithPrices[0].id,
+        group_id: fullItemWithPrices[0].group_id,
+        display_name: fullItemWithPrices[0].display_name,
+        icon_url: fullItemWithPrices[0].icon_url,
+        created_time: fullItemWithPrices[0].created_time,
+        visible: fullItemWithPrices[0].visible,
+        times_purchased: fullItemWithPrices[0].times_purchased,
+    }
+    const prices: tableType.Prices[] = fullItemWithPrices.map(fullItemWithPrice => ({
+        item_id: fullItemWithPrice.id,
+        price: fullItemWithPrice.price,
+        display_name: fullItemWithPrice.price_display_name,
+    }))
+    const isFavorite = fullItemWithPrices[0].favorite
+
+    return [item, prices, isFavorite]
+}
+
 export function toItem(
-    item: tableType.Items,
+    item: tableType.FullItem,
     prices: tableType.Prices[],
     favorite: boolean
 ): Item {
     return {
         id: item.id,
-        addedTime: item.addedtime.getTime(),
-        displayName: item.displayname,
+        addedTime: item.created_time.getTime(),
+        displayName: item.display_name,
         prices: prices.map(price => ({
             price: price.price,
-            displayName: price.displayname,
+            displayName: price.display_name,
         })),
-        timesPurchased: item.timespurchased,
+        timesPurchased: item.times_purchased,
         visible: item.visible,
         favorite: favorite,
-        ...(!!item.iconurl && { icon: item.iconurl }),
+        ...(!!item.icon_url && { icon: item.icon_url }),
     }
 }
 

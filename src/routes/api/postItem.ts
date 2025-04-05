@@ -7,7 +7,6 @@ import * as convert from "../../util/convert";
 
 export default async function postItem(req: Request, res: Response) {
     const { displayName, prices, icon } = req.body as PostItemBody
-    const db = await database()
     const userId: UserId = getUserId(res)
     const groupId: GroupId = getGroupId(res)
 
