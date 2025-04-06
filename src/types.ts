@@ -5,14 +5,16 @@ import { ApiError } from './errors'
 
 // #region Basic types
 export interface Group {
-    id: GroupId
+    id: number
+    gammaId: GroupId
 
     prettyName: string
     avatarUrl: string
 }
 
 export interface User {
-    id: UserId
+    id: number
+    gammaId: UserId
 
     firstName: string
     lastName: string

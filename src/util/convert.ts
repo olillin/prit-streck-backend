@@ -69,29 +69,31 @@ export function toUser(
     gammaUser: gamma.User | gamma.UserInfo
 ): User {
     return {
+        id: dbUser.id,
         balance: dbUser.balance,
         ...(isUserInfo(gammaUser)
             ? {
-                  id: gammaUser.sub,
-                  nick: gammaUser.nickname,
-                  firstName: gammaUser.given_name,
-                  lastName: gammaUser.family_name,
-                  avatarUrl: userAvatarUrl(gammaUser.sub),
+                gammaId: gammaUser.sub,
+                nick: gammaUser.nickname,
+                firstName: gammaUser.given_name,
+                lastName: gammaUser.family_name,
+                avatarUrl: userAvatarUrl(gammaUser.sub),
               }
             : {
-                  id: gammaUser.id,
-                  nick: gammaUser.nick,
-                  firstName: gammaUser.firstName,
-                  lastName: gammaUser.lastName,
-                  avatarUrl: userAvatarUrl(gammaUser.id),
+                gammaId: gammaUser.id,
+                nick: gammaUser.nick,
+                firstName: gammaUser.firstName,
+                lastName: gammaUser.lastName,
+                avatarUrl: userAvatarUrl(gammaUser.id),
               }),
     }
 }
 
-export function toGroup(gammaGroup: gamma.Group | gamma.GroupWithPost): Group {
+export function toGroup(dbGroup: tableType.Groups, gammaGroup: gamma.Group | gamma.GroupWithPost): Group {
     return {
-        id: gammaGroup.id,
-        avatarUrl: groupAvatarUrl(gammaGroup.id),
+        id: dbGroup.id,
+        gammaId: dbGroup.gamma_id,
+        avatarUrl: groupAvatarUrl(dbGroup.gamma_id),
         prettyName: gammaGroup.prettyName,
     }
 }
@@ -101,9 +103,13 @@ export function toUserResponse(
     gammaUser: GammaUser,
     gammaGroup: gamma.Group
 ): UserResponse {
+    const dbGroup: tableType.Groups = {
+        id: dbUser.group_id,
+        gamma_id: dbUser.group_gamma_id,
+    }
     return {
         user: toUser(dbUser, gammaUser),
-        group: toGroup(gammaGroup),
+        group: toGroup(dbGroup, gammaGroup),
     }
 }
 

@@ -92,7 +92,7 @@ export interface UserBalances extends Users {
 }
 
 export interface FullUser extends UserBalances {
-    group_gamma_id: number
+    group_gamma_id: GroupId
 }
 
 export interface FullItemWithPrices extends FullItem {

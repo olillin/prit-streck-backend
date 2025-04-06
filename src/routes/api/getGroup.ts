@@ -6,6 +6,7 @@ import {getAuthorizedGroup} from "../../util/getter";
 import {ApiError, sendError} from "../../errors";
 import * as convert from "../../util/convert";
 import {GroupResponse, ResponseBody, User} from "../../types";
+import * as tableType from "../../database/types";
 
 export default async function getGroup(req: Request, res: Response, next: NextFunction) {
     try {
@@ -19,12 +20,12 @@ export default async function getGroup(req: Request, res: Response, next: NextFu
             sendError(res, ApiError.NoPermission)
             return
         }
-        const group = convert.toGroup(gammaGroup)
 
         // Get members
+        const fullUsersInGroup = await database.getFullUsersInGroup(groupId)
         let userPromises: Promise<User>[]
         try {
-            userPromises = (await database.getFullUsersInGroup(groupId)).map(async dbUser => {
+            userPromises = fullUsersInGroup.map(async dbUser => {
                 const gammaUser = await clientApi.getUser(dbUser.gammaid)
                 return convert.toUser(dbUser, gammaUser)
             })
@@ -36,6 +37,11 @@ export default async function getGroup(req: Request, res: Response, next: NextFu
         }
         const members = await Promise.all(userPromises)
 
+        const dbGroup: tableType.Groups = {
+            id: fullUsersInGroup[0].group_id,
+            gamma_id: fullUsersInGroup[0].group_gamma_id,
+        }
+        const group = convert.toGroup(dbGroup, gammaGroup)
         const body: ResponseBody<GroupResponse> = { data: { group, members } }
         res.json(body)
     } catch (error) {
