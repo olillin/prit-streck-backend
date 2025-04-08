@@ -78,22 +78,30 @@ The server can be configured using
 Example: setting `GAMMA_CLIENT_SECRET_FILE=secrets/gamma-secret.txt` will make the server set `GAMMA_CLIENT_SECRET` to
 the content of `secrets/gamma-secret.txt`.
 
+### Generic
+
+| Name           | Type        | Default                                                                                               | Description                                                                                                                     |
+|----------------|-------------|-------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| PORT           | int         | 8080                                                                                                  | Which port the server will listen to                                                                                            |
+| SUPER_GROUP_ID | UUID        | [P.R.I.T. super group](https://auth.chalmers.it/super-groups/32da51ec-2854-4bc2-b19a-30dad5dcc501) id | Which Gamma super group to allow to use the service                                                                             |
+| EXPOSE_CORS    | true\|false | false                                                                                                 | Enable [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS) requests for all origins and disable CORS security |
+
 ### JWT
 
-| Name                    | Type   | Description                                                                                |
-|-------------------------|--------|--------------------------------------------------------------------------------------------|
-| JWT_SECRET              | string | Used to sign JWTs when users log in |
-| JWT_ISSUER              | string | The issuer of the JWT                                                                      |                                                                         |                                                                              |
-| JWT_EXPIRES_IN          | int    | How many seconds the JWT is valid for after signing                                        |
+| Name                    | Type   | Default    |  Description                                                                              |
+|-------------------------|--------|------------|-------------------------------------------------------------------------------------------|
+| JWT_SECRET              | string |            |  Used to sign JWTs when users log in                                                      |
+| JWT_ISSUER              | string | PritStreck |  The issuer of the JWT                                                                    |
+| JWT_EXPIRES_IN          | int    | 43 200     |  How many seconds the JWT is valid for after signing                                      |
 
 ### Gamma
 
-| Name                    | Type   | Description                                                            |
-|-------------------------|--------|------------------------------------------------------------------------|
-| GAMMA_CLIENT_ID         | string | Public identifier of your Gamma client                                 |
-| GAMMA_CLIENT_SECRET     | string | Secret key of your Gamma client                                        |
-| GAMMA_API_AUTHORIZATION | string | Gamma API authorization header, should look like `pre-shared: xxxx...` |
-| GAMMA_REDIRECT_URI      | URI    | Redirect URI of your Gamma client                                      |
+| Name                    | Type   | Default | Description                                                           |
+|-------------------------|--------|---------|-----------------------------------------------------------------------|
+| GAMMA_CLIENT_ID         | string |         | Public identifier of your Gamma client                                |
+| GAMMA_CLIENT_SECRET     | string |         | Secret key of your Gamma client                                       |
+| GAMMA_API_AUTHORIZATION | string |         | Gamma API authorization header, should look like `pre-shared: xxxx... |
+| GAMMA_REDIRECT_URI      | URI    |         | Redirect URI of your Gamma client                                     |
 
 ### PostgreSQL
 

@@ -6,6 +6,7 @@ const PRIT_SUPER_GROUP_ID = '32da51ec-2854-4bc2-b19a-30dad5dcc501'
 export interface EnvironmentVariables {
     PORT?: string
     SUPER_GROUP_ID?: string
+    EXPOSE_CORS?: string
 
     GAMMA_CLIENT_ID: string
     GAMMA_CLIENT_SECRET: string
@@ -31,6 +32,7 @@ type Concrete<Type> = {
 export const DEFAULT_ENVIRONMENT: Partial<Concrete<EnvironmentVariables>> = {
     PORT: '8080',
     SUPER_GROUP_ID: PRIT_SUPER_GROUP_ID,
+    EXPOSE_CORS: 'false',
 
     PGPASSWORD: 'postgres',
     PGUSER: 'postgres',

@@ -1,13 +1,20 @@
-import express, { NextFunction, Request, Response } from 'express'
+import express, {NextFunction, Request, Response} from 'express'
 import rateLimit from 'express-rate-limit'
 import {authorizationCode, database} from './config/clients'
 import env from './config/env'
-import { sendError, unexpectedError } from './errors'
+import {sendError, unexpectedError} from './errors'
 import createApiRouter from './routers/api'
-import { login as loginRoute } from './routes/login'
+import {login as loginRoute} from './routes/login'
 import * as validate from './middleware/validators'
 import validationErrorHandler from './middleware/validationErrorHandler'
-import appendHeader from "./middleware/setHeader";
+import appendHeader from './middleware/setHeader'
+import cors, {CorsOptions} from 'cors'
+
+const exposeCors = env.EXPOSE_CORS.toLowerCase() === 'true' || env.EXPOSE_CORS === '1'
+const corsOptions: CorsOptions = {
+    origin: exposeCors ? '*' : true,
+    credentials: exposeCors,
+}
 
 async function main() {
     const app = express()
@@ -21,6 +28,9 @@ async function main() {
         legacyHeaders: false, // Disable `X-RateLimit-*` headers (deprecated)
     })
     app.use(limiter)
+
+    app.use(cors(corsOptions))
+    app.options('*', cors())
 
     app.use(express.json())
     app.use(express.urlencoded({ extended: false }))
