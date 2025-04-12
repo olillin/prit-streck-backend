@@ -2,7 +2,6 @@ import {GroupId, UserId} from 'gammait'
 import pg, {Client, ClientConfig, QueryResult, QueryResultRow} from 'pg'
 import * as q from './queries'
 import * as tableType from './types'
-import {FullTransaction} from './types'
 import {Deposit, Item, Price, Purchase, PurchaseItem} from '../types'
 import * as convert from '../util/convert'
 import {database} from "../config/clients";
@@ -512,24 +511,14 @@ class DatabaseClient extends EventEmitter {
         return await this.queryFirstInt(q.COUNT_TRANSACTIONS_IN_GROUP, groupId)
     }
 
-    async getTransactionsInGroup(groupId: number): Promise<Array<Deposit | Purchase>> {
-        const rows = await this.queryRows<tableType.FullTransaction>(q.GET_TRANSACTIONS_IN_GROUP, groupId)
+    async getAllTransactionsInGroup(groupId: number): Promise<Array<Deposit | Purchase>> {
+        const rows = await this.queryRows<tableType.FullTransaction>(q.GET_ALL_TRANSACTIONS_IN_GROUP, groupId)
+        return convert.toTransactions(rows)
+    }
 
-        // Group rows
-        const transactionGroups = new Map<number, FullTransaction[]>()
-        for (const row of rows) {
-            const groupedRows = transactionGroups.get(row.id) ?? []
-            groupedRows.push(row)
-            transactionGroups.set(row.id, groupedRows)
-        }
-
-        // Convert to transactions
-        const transactions: Array<Deposit | Purchase> = []
-        for (const [, groupedRows] of transactionGroups) {
-            transactions.push(convert.fromFullTransaction(groupedRows))
-        }
-
-        return transactions
+    async getTransactionsInGroup(groupId: number, limit: number, offset: number): Promise<Array<Deposit | Purchase>> {
+        const rows = await this.queryRows<tableType.FullTransaction>(q.GET_TRANSACTIONS_IN_GROUP, groupId, limit, offset)
+        return convert.toTransactions(rows)
     }
 
     // Deposit

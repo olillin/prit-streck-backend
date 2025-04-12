@@ -126,7 +126,16 @@ export const CREATE_BARE_TRANSACTION = 'INSERT INTO transactions(group_id, creat
 export const GET_TRANSACTION = 'SELECT * FROM full_transactions WHERE id = $1'
 export const TRANSACTION_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM transactions WHERE id = $1 AND group_id = $2)'
 export const COUNT_TRANSACTIONS_IN_GROUP = 'SELECT COUNT(*) FROM transactions WHERE group_id = $1'
-export const GET_TRANSACTIONS_IN_GROUP = 'SELECT * FROM full_transactions WHERE group_id = $1'
+export const GET_ALL_TRANSACTIONS_IN_GROUP = 'SELECT * FROM full_transactions WHERE group_id = $1'
+export const GET_TRANSACTIONS_IN_GROUP = `WITH distinct_transactions AS (SELECT DISTINCT id, created_time
+        FROM full_transactions
+        WHERE group_id = $1
+        ORDER BY created_time DESC
+        LIMIT $2
+        OFFSET $3)
+    SELECT t.*
+    FROM full_transactions t
+    JOIN distinct_transactions d ON t.id = d.id;`
 export const DELETE_TRANSACTION = [
     DELETE_PURCHASED_ITEMS,
     'DELETE FROM ONLY transactions WHERE id = $1',

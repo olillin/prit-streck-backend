@@ -189,6 +189,24 @@ export function toDeposit(
     }
 }
 
+export function toTransactions(dbFullTransaction: tableType.FullTransaction[]): Array<Deposit | Purchase> {
+    // Group rows
+    const transactionGroups = new Map<number, tableType.FullTransaction[]>()
+    for (const row of dbFullTransaction) {
+        const groupedRows = transactionGroups.get(row.id) ?? []
+        groupedRows.push(row)
+        transactionGroups.set(row.id, groupedRows)
+    }
+
+    // Convert to transactions
+    const transactions: Array<Deposit | Purchase> = []
+    for (const [, groupedRows] of transactionGroups) {
+        transactions.push(fromFullTransaction(groupedRows))
+    }
+
+    return transactions
+}
+
 export function fromFullTransaction(
     dbFullTransaction: tableType.FullTransaction[]
 ): Deposit | Purchase {
