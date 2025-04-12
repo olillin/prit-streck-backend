@@ -84,26 +84,22 @@ function isUserInfo(gammaUser: GammaUser): gammaUser is gamma.UserInfo {
 }
 export function toUser(
     dbUser: tableType.FullUser,
-    gammaUser: gamma.User | gamma.UserInfo
+    gammaUser: gamma.User | gamma.UserInfo | null
 ): User {
+    const names = (gammaUser === null) ? {
+        nick: "N/A", firstName: "N/A", lastName: "N/A",
+    } : (isUserInfo(gammaUser) ? {
+        nick: gammaUser.nickname, firstName: gammaUser.given_name, lastName: gammaUser.family_name,
+    } : {
+        nick: gammaUser.nick, firstName: gammaUser.firstName, lastName: gammaUser.lastName,
+    })
+
     return {
         id: dbUser.id,
+        gammaId: dbUser.gamma_id,
         balance: dbUser.balance,
-        ...(isUserInfo(gammaUser)
-            ? {
-                gammaId: gammaUser.sub,
-                nick: gammaUser.nickname,
-                firstName: gammaUser.given_name,
-                lastName: gammaUser.family_name,
-                avatarUrl: userAvatarUrl(gammaUser.sub),
-              }
-            : {
-                gammaId: gammaUser.id,
-                nick: gammaUser.nick,
-                firstName: gammaUser.firstName,
-                lastName: gammaUser.lastName,
-                avatarUrl: userAvatarUrl(gammaUser.id),
-              }),
+        avatarUrl: userAvatarUrl(dbUser.gamma_id),
+        ...names,
     }
 }
 

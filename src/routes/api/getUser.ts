@@ -22,13 +22,13 @@ export default async function getUser(req: Request, res: Response) {
     const gammaUserPromise = clientApi.getUser(gammaUserId).catch(reason => {
         if (!res.headersSent) {
             console.log(reason)
-            sendError(res, 404, 'User does not exist')
+            sendError(res, ApiError.UserNotExist)
         }
     })
     const groupsPromise = clientApi.getGroupsFor(gammaUserId).catch(reason => {
         if (!res.headersSent) {
             console.log(reason)
-            sendError(res, 500, 'Failed to fetch groups')
+            sendError(res, ApiError.FailedGetGroups)
         }
     })
 
