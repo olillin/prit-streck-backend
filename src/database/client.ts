@@ -1,5 +1,5 @@
 import {GroupId, UserId} from 'gammait'
-import {Client, ClientConfig, QueryResult, QueryResultRow} from 'pg'
+import pg, {Client, ClientConfig, QueryResult, QueryResultRow} from 'pg'
 import * as q from './queries'
 import * as tableType from './types'
 import {FullTransaction} from './types'
@@ -8,7 +8,10 @@ import * as convert from '../util/convert'
 import {database} from "../config/clients";
 import {EventEmitter} from 'node:events'
 
-const REQUIRED_TABLES = ['deposits', 'favorite_items', 'full_user', 'groups', 'items', 'prices', 'purchased_items', 'purchases', 'transactions', 'user_balances', 'users', 'users_total_deposited', 'users_total_purchased',]
+// Parse numeric types
+pg.types.setTypeParser(pg.types.builtins.NUMERIC, parseFloat)
+
+const REQUIRED_TABLES = ['groups', 'users', 'items', 'prices', 'transactions', 'purchased_items', 'deposits', 'favorite_items', 'purchases', 'users_total_deposited', 'users_total_purchased', 'user_balances', 'full_user', 'full_item', 'full_transactions']
 
 export const legalItemColumns = ['id', 'group_id', 'display_name', 'icon_url', 'created_time', 'visible', 'favorite'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
@@ -84,47 +87,43 @@ class DatabaseClient extends EventEmitter {
         })
     }
 
-    connected(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const onConnected = () => {
-                resolve()
-            }
+    connected: Promise<void> = new Promise((resolve, reject) => {
+        const onConnected = () => {
+            resolve()
+        }
 
-            const onInvalid = () => {
-                reject('Failed to connect to database')
-            }
+        const onInvalid = () => {
+            reject('Failed to connect to database')
+        }
 
-            this.once('connected', onConnected)
-            this.once('error', onInvalid)
+        this.once('connected', onConnected)
+        this.once('error', onInvalid)
 
-            if (this.isConnected) {
-                onConnected()
-            } else if (this.isInvalid) {
-                onInvalid()
-            }
-        })
-    }
+        if (this.isConnected) {
+            onConnected()
+        } else if (this.isInvalid) {
+            onInvalid()
+        }
+    })
 
-    validated(): Promise<typeof this> {
-        return new Promise((resolve, reject) => {
-            const onValidated = () => {
-                resolve(this)
-            }
+    validated: Promise<typeof this> = new Promise((resolve, reject) => {
+        const onValidated = () => {
+            resolve(this)
+        }
 
-            const onInvalid = () => {
-                reject('Database validation failed')
-            }
+        const onInvalid = () => {
+            reject('Database validation failed')
+        }
 
-            this.once('validated', onValidated)
-            this.once('error', onInvalid)
+        this.once('validated', onValidated)
+        this.once('error', onInvalid)
 
-            if (this.isValidated) {
-                onValidated()
-            } else if (this.isInvalid) {
-                onInvalid()
-            }
-        })
-    }
+        if (this.isValidated) {
+            onValidated()
+        } else if (this.isInvalid) {
+            onInvalid()
+        }
+    })
 
     end() {
         return this.pg.end()
@@ -154,7 +153,7 @@ class DatabaseClient extends EventEmitter {
      */
     private async queryWithStatement<T extends QueryResultRow>(statement: string, ...args: unknown[]): Promise<QueryResult<T>> {
         try {
-            await this.connected()
+            await this.connected
         } catch (error) {
             throw new Error(`Failed to get database: ${error}`)
         }
@@ -304,7 +303,6 @@ class DatabaseClient extends EventEmitter {
      * @return the full information of the user with `gammaUserId` in the group with `gammaGroupId`
      */
     async softCreateGroupAndUser(gammaGroupId: GroupId, gammaUserId: UserId): Promise<tableType.FullUser> {
-        console.log('2.5')
         return (await this.queryWithTransaction<tableType.FullUser>(q.SOFT_CREATE_GROUP_AND_USER, gammaGroupId, gammaUserId))!.rows[0]
     }
 
@@ -330,7 +328,9 @@ class DatabaseClient extends EventEmitter {
     }
 
     async getFullUser(userId: number): Promise<tableType.FullUser | undefined> {
-        return await this.queryFirstRow(q.GET_FULL_USER, userId)
+        const row = await this.queryFirstRow<tableType.FullUser>(q.GET_FULL_USER, userId)
+        console.log(row)
+        return row
     }
 
     async getUsersInGroup(groupId: number): Promise<tableType.Users[]> {
@@ -345,7 +345,7 @@ class DatabaseClient extends EventEmitter {
     // #region Queries
 
     async userExistsInGroup(userId: number, groupId: number): Promise<boolean> {
-        return await this.queryFirstBoolean(q.GAMMA_USER_EXISTS_IN_GROUP, userId, groupId)
+        return await this.queryFirstBoolean(q.USER_EXISTS_IN_GROUP, userId, groupId)
     }
 
     // Items
@@ -535,6 +535,7 @@ class DatabaseClient extends EventEmitter {
     // Deposit
     async createDeposit(groupId: number, createdBy: number, createdFor: number, total: number): Promise<Deposit> {
         const row = (await this.queryFirstRow<tableType.Deposits>(q.CREATE_DEPOSIT, groupId, createdBy, createdFor, total))!
+        console.log(row)
         return convert.toDeposit(row)
     }
 
@@ -549,13 +550,14 @@ class DatabaseClient extends EventEmitter {
             const dbTransaction = await this.createBareTransaction(groupId, createdBy, createdFor)
 
             // Add items
-            const itemPromises = items.map(async item => {
+            await Promise.all(items.map(async item => {
                 const dbItem = await this.getItem(item.id)
                 if (!dbItem) {
                     throw new Error(`Item with id ${item.id} does not exist`)
                 }
 
-                return this.addPurchasedItem(
+                console.log(`Adding item ${dbItem.id}`)
+                await this.addPurchasedItem(
                     dbTransaction.id, //
                     item.quantity,
                     item.purchasePrice,
@@ -563,12 +565,11 @@ class DatabaseClient extends EventEmitter {
                     dbItem.display_name,
                     dbItem.icon_url
                 )
-            })
-            await Promise.all(itemPromises)
+            }))
             const transaction = await this.getTransaction(dbTransaction.id)
-            if (Object.hasOwn(transaction, 'total')) {
-                // Is deposit
-            } else {
+            console.log(transaction)
+            if (transaction.type === 'purchase') {
+                console.log('Got purchase')
                 purchase = transaction as Purchase
             }
 

@@ -71,6 +71,7 @@ export const GET_USER = 'SELECT * FROM users WHERE id = $1'
 export const GET_FULL_USER = 'SELECT * FROM full_user WHERE id = $1'
 export const GET_USERS_IN_GROUP = 'SELECT * FROM users WHERE group_id = $1'
 export const GET_FULL_USERS_IN_GROUP = 'SELECT * FROM full_user WHERE group_id = $1'
+export const USER_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM users WHERE id = $1 AND group_id = $2)'
 export const GAMMA_USER_EXISTS = 'SELECT EXISTS(SELECT * FROM users WHERE gamma_id = $1)'
 export const GAMMA_USER_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM users WHERE gamma_id = $1 AND group_id = $2)'
 

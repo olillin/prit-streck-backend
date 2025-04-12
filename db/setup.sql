@@ -88,7 +88,7 @@ SELECT u.id, u.gamma_id, u.group_id,
         coalesce((SELECT sum(total)
             FROM deposits d
             WHERE d.created_for = u.id
-        ), 0) AS total
+        ), 0)::NUMERIC(7, 2) AS total
 FROM users u;
 
 CREATE VIEW users_total_purchased AS
@@ -97,7 +97,7 @@ SELECT u.id, u.gamma_id, u.group_id,
             SELECT sum(p.purchase_price * p.quantity)
             FROM purchases p
             WHERE p.created_for = u.id
-        ), 0) AS total
+        ), 0)::NUMERIC(7, 2) AS total
 FROM users u;
 
 CREATE VIEW user_balances AS
@@ -116,10 +116,36 @@ SELECT i.id, i.group_id, i.display_name, i.icon_url, i.created_time, i.visible,
         coalesce((SELECT sum(p.quantity)
                   FROM purchased_items p
                   WHERE p.item_id = i.id
-                  ), 0) AS times_purchased
+                  ), 0)::INT AS times_purchased
 FROM items i;
 
 CREATE VIEW full_transactions AS
-SELECT *, NULL AS item_id, NULL AS display_name, NULL AS icon_url,
-       NULL AS purchase_price, NULL AS purchase_price_name, NULL AS quantity FROM deposits
-UNION ALL SELECT *, NULL AS total FROM purchases ORDER BY created_time DESC
+SELECT
+       id,
+       group_id,
+       created_by,
+       created_for,
+       created_time,
+       total,
+       NULL AS item_id,
+       NULL AS display_name,
+       NULL AS icon_url,
+       NULL AS purchase_price,
+       NULL AS purchase_price_name,
+       NULL AS quantity
+FROM deposits
+UNION ALL
+SELECT
+    id,
+    group_id,
+    created_by,
+    created_for,
+    created_time,
+    NULL AS total,
+    item_id,
+    display_name,
+    icon_url,
+    purchase_price,
+    purchase_price_name,
+    quantity
+FROM purchases ORDER BY created_time DESC

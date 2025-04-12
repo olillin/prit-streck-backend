@@ -146,9 +146,7 @@ export const postPurchase = () => [
 export const postDeposit = () => [
     body('userId')
         .exists()
-        .isString()
-        .trim()
-        .isUUID()
+        .isInt({ min: 1 })
         .withMessage(ApiError.InvalidUserId)
         .bail()
         .custom(checkUserExistsInGroup),
