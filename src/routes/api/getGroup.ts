@@ -10,11 +10,11 @@ import {getAuthorizedGroup} from "../../util/getter";
 
 export default async function getGroup(req: Request, res: Response, next: NextFunction) {
     try {
-        const userGammaId: UserId = getGammaUserId(res)
+        const gammaUserId: UserId = getGammaUserId(res)
         const groupId = getGroupId(res)
 
         // Get group
-        const gammaGroups = await clientApi.getGroupsFor(userGammaId)
+        const gammaGroups = await clientApi.getGroupsFor(gammaUserId)
         const gammaGroup = getAuthorizedGroup(gammaGroups)
         if (!gammaGroup) {
             sendError(res, ApiError.NoPermission)
@@ -23,10 +23,15 @@ export default async function getGroup(req: Request, res: Response, next: NextFu
 
         // Get members
         const fullUsersInGroup = await database.getFullUsersInGroup(groupId)
-        let userPromises: Promise<User>[]
+        let userPromises: Promise<User|null>[]
         try {
             userPromises = fullUsersInGroup.map(async dbUser => {
-                const gammaUser = await clientApi.getUser(dbUser.gammaid)
+                const gammaUser = await clientApi.getUser(dbUser.gamma_id)
+                    .catch(() => null)
+                if (!gammaUser) {
+                    console.warn(`Failed to get user ${dbUser.gamma_id} in group ${dbUser.group_gamma_id}`)
+                    return null
+                }
                 return convert.toUser(dbUser, gammaUser)
             })
         } catch (e) {
@@ -35,7 +40,7 @@ export default async function getGroup(req: Request, res: Response, next: NextFu
             sendError(res, ApiError.InvalidGammaResponse)
             return
         }
-        const members = await Promise.all(userPromises)
+        const members = (await Promise.all(userPromises)).filter(user => user !== null)
 
         const dbGroup: tableType.Groups = {
             id: fullUsersInGroup[0].group_id,

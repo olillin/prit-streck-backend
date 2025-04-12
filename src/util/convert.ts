@@ -152,9 +152,9 @@ export function toTransaction<T extends TransactionType>(
     return {
         type,
         id: dbTransaction.id,
-        createdBy: dbTransaction.createdby,
-        createdFor: dbTransaction.createdfor,
-        createdTime: dbTransaction.createdtime.getTime(),
+        createdBy: dbTransaction.created_by,
+        createdFor: dbTransaction.created_for,
+        createdTime: dbTransaction.created_time.getTime(),
     }
 }
 
@@ -163,7 +163,7 @@ export function toPurchasedItem(
 ): PurchasedItem {
     return {
         item: {
-            displayName: dbPurchasedItem.displayname,
+            displayName: dbPurchasedItem.display_name,
             ...(!!dbPurchasedItem.item_id && { id: dbPurchasedItem.item_id }),
             ...(!!dbPurchasedItem.icon_url && { icon: dbPurchasedItem.icon_url }),
         },

@@ -6,29 +6,49 @@ import {FullTransaction} from './types'
 import {Deposit, Item, Price, Purchase, PurchaseItem} from '../types'
 import * as convert from '../util/convert'
 import {database} from "../config/clients";
+import {EventEmitter} from 'node:events'
 
 const REQUIRED_TABLES = ['deposits', 'favorite_items', 'full_user', 'groups', 'items', 'prices', 'purchased_items', 'purchases', 'transactions', 'user_balances', 'users', 'users_total_deposited', 'users_total_purchased',]
 
 export const legalItemColumns = ['id', 'group_id', 'display_name', 'icon_url', 'created_time', 'visible', 'favorite'] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
 
-class DatabaseClient {
+class DatabaseClient extends EventEmitter {
     pg: Client
 
-    isReady: boolean = false
-    invalid: boolean = false
+    isConnected: boolean = false
+    isValidated: boolean = false
+    isInvalid: boolean = false
 
     constructor(config?: string | ClientConfig) {
+        super()
         this.pg = new Client(config);
+
+        this.on('connected', () => {
+            this.isConnected = true
+        })
+        this.on('validated', () => {
+            this.isValidated = true
+        })
+        this.on('error', () => {
+            this.isInvalid = true
+        })
 
         // Connect to database
         this.pg.connect()
-            // Start validation
-            .then(() => this.validateDatabase())
+            .then(() => {
+                this.emit('connected')
+
+                console.log('Starting validation')
+                // Start validation
+                return this.validateDatabase()
+            })
             .then(() => {
                 console.log('Database validated successfully')
                 return this.query("SET client_encoding = 'UTF8';")
-            }).then(() => this.isReady = true)
+            }).then(() => {
+                this.emit('validated')
+            })
             .catch(reason => {
                 console.error('Creating database client failed: ' + reason)
             })
@@ -55,28 +75,54 @@ class DatabaseClient {
 
                     // All checks pass
                     resolve()
-                    this.invalid = false
                 })
                 .catch(reason => {
                     // Validation failed
+                    this.emit('error')
                     reject('Database validation failed' + (reason ? `: ${reason}` : ''))
-                    this.invalid = true
                 })
         })
     }
 
-    ready(): Promise<typeof this> {
+    connected(): Promise<void> {
         return new Promise((resolve, reject) => {
-            const check = () => {
-                if (this.invalid) {
-                    reject("Database validation failed")
-                } else if (this.isReady) {
-                    resolve(this)
-                } else {
-                    setTimeout(check, 1000);
-                }
+            const onConnected = () => {
+                resolve()
             }
-            check()
+
+            const onInvalid = () => {
+                reject('Failed to connect to database')
+            }
+
+            this.once('connected', onConnected)
+            this.once('error', onInvalid)
+
+            if (this.isConnected) {
+                onConnected()
+            } else if (this.isInvalid) {
+                onInvalid()
+            }
+        })
+    }
+
+    validated(): Promise<typeof this> {
+        return new Promise((resolve, reject) => {
+            const onValidated = () => {
+                resolve(this)
+            }
+
+            const onInvalid = () => {
+                reject('Database validation failed')
+            }
+
+            this.once('validated', onValidated)
+            this.once('error', onInvalid)
+
+            if (this.isValidated) {
+                onValidated()
+            } else if (this.isInvalid) {
+                onInvalid()
+            }
         })
     }
 
@@ -108,7 +154,7 @@ class DatabaseClient {
      */
     private async queryWithStatement<T extends QueryResultRow>(statement: string, ...args: unknown[]): Promise<QueryResult<T>> {
         try {
-            await this.ready()
+            await this.connected()
         } catch (error) {
             throw new Error(`Failed to get database: ${error}`)
         }
@@ -258,6 +304,7 @@ class DatabaseClient {
      * @return the full information of the user with `gammaUserId` in the group with `gammaGroupId`
      */
     async softCreateGroupAndUser(gammaGroupId: GroupId, gammaUserId: UserId): Promise<tableType.FullUser> {
+        console.log('2.5')
         return (await this.queryWithTransaction<tableType.FullUser>(q.SOFT_CREATE_GROUP_AND_USER, gammaGroupId, gammaUserId))!.rows[0]
     }
 
@@ -279,11 +326,11 @@ class DatabaseClient {
     }
 
     async getUser(userId: number): Promise<tableType.Users | undefined> {
-        return await this.queryFirstRow<tableType.Users>(q.GET_USER, userId)
+        return await this.queryFirstRow(q.GET_USER, userId)
     }
 
     async getFullUser(userId: number): Promise<tableType.FullUser | undefined> {
-        return await this.queryFirstRow<tableType.FullUser>(q.GET_FULL_USER, userId)
+        return await this.queryFirstRow(q.GET_FULL_USER, userId)
     }
 
     async getUsersInGroup(groupId: number): Promise<tableType.Users[]> {
@@ -513,8 +560,8 @@ class DatabaseClient {
                     item.quantity,
                     item.purchasePrice,
                     dbItem.id,
-                    dbItem.displayName,
-                    dbItem.icon
+                    dbItem.display_name,
+                    dbItem.icon_url
                 )
             })
             await Promise.all(itemPromises)
@@ -537,7 +584,7 @@ class DatabaseClient {
         return purchase
     }
 
-    async addPurchasedItem(purchaseId: number, quantity: number, purchasePrice: Price, itemId: number, displayName: string, iconUrl?: string): Promise<tableType.PurchasedItems> {
+    async addPurchasedItem(purchaseId: number, quantity: number, purchasePrice: Price, itemId: number, displayName: string, iconUrl?: string|null): Promise<tableType.PurchasedItems> {
         if (iconUrl) {
             return (await this.queryFirstRow(q.ADD_PURCHASED_ITEM_WITH_ICON, //
                 purchaseId, quantity, purchasePrice.price, purchasePrice.displayName, itemId, displayName, iconUrl))!

@@ -4,20 +4,17 @@ import jwt from 'jsonwebtoken'
 import { authorizationCode, clientApi, database } from '../config/clients'
 import env from '../config/env'
 import {ApiError, sendError, tokenSignError} from '../errors'
-import { JWT  } from '../types'
+import {JWT, LoggedInUser} from '../types'
 import * as convert from '../util/convert'
 import { getAuthorizedGroup } from '../util/getter'
 
-interface LoggedInUser {
-    userId: UserId
-    groupId: GroupId
-}
+
 
 function signJWT(user: LoggedInUser): Promise<JWT> {
     return new Promise((resolve, reject) => {
         const expireSeconds = parseFloat(env.JWT_EXPIRES_IN)
 
-        console.log(`Signing token for ${user.userId}`)
+        console.log(`Signing token for ${user.gammaUserId}`)
 
         try {
             jwt.sign(
@@ -72,7 +69,9 @@ export function login(): RequestHandler {
             const userInfo = await authorizationCode.userInfo()
             const gammaUserId: UserId = userInfo.sub
             const groups = await clientApi.getGroupsFor(gammaUserId)
+            console.log('1')
             const group = getAuthorizedGroup(groups)
+            console.log('e1')
             if (!group) {
                 // User is not in the super group
                 sendError(res, ApiError.NoPermission)
@@ -80,11 +79,15 @@ export function login(): RequestHandler {
             }
             const gammaGroupId: GroupId = group.id
 
+            console.log('2')
             const dbUser = await database.softCreateGroupAndUser(gammaGroupId, gammaUserId)
+            console.log('e2')
 
             signJWT({
-                userId: gammaUserId,
-                groupId: group.id,
+                userId: dbUser.id,
+                groupId: dbUser.group_id,
+                gammaUserId: dbUser.gamma_id,
+                gammaGroupId: dbUser.group_gamma_id,
             })
                 .then(token => {
                     const body = convert.toLoginResponse(

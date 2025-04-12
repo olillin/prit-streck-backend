@@ -94,12 +94,14 @@ export interface JWT {
     expires_in: number
 }
 
-export interface LocalJwt extends JwtPayload {
+export interface LoggedInUser {
     userId: number
-    gammaUserId: UserId
     groupId: number
+    gammaUserId: UserId
     gammaGroupId: GroupId
 }
+
+export interface LocalJwt extends JwtPayload, LoggedInUser {}
 
 export interface LoginResponse extends UserResponse, JWT {
     token_type: string

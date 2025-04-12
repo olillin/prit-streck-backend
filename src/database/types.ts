@@ -1,22 +1,21 @@
-import { GroupId, UserId } from 'gammait'
-import { QueryResultRow } from 'pg'
+import {GroupId, UserId} from 'gammait'
 
-export interface TableNames extends QueryResultRow {
+export interface TableNames {
     table_name: string
 }
 
-export interface Users extends QueryResultRow {
+export interface Users {
     id: number
     gamma_id: UserId
     group_id: number
 }
 
-export interface Groups extends QueryResultRow {
+export interface Groups {
     id: number
     gamma_id: GroupId
 }
 
-export interface Items extends QueryResultRow {
+export interface Items {
     id: number
     group_id: number
     display_name: string
@@ -29,13 +28,13 @@ export interface FullItem extends Items {
     times_purchased: number
 }
 
-export interface Prices extends QueryResultRow {
+export interface Prices {
     item_id: number
     price: number
     display_name: string
 }
 
-export interface Transactions extends QueryResultRow {
+export interface Transactions {
     id: number
     group_id: number
     created_by: UserId
@@ -43,23 +42,23 @@ export interface Transactions extends QueryResultRow {
     created_time: Date
 }
 
-export interface PurchasedItems extends QueryResultRow {
-    purchase_id: number
-
-    quantity: number
-    purchase_price: number
-    purchase_price_display_name: string
+export interface PurchasedItems {
+    transaction_id: number
 
     item_id: number | null
     display_name: string
     icon_url: string | null
+
+    purchase_price: number
+    purchase_price_name: string
+    quantity: number
 }
 
 export interface Deposits extends Transactions {
     total: number
 }
 
-export interface FavoriteItems extends QueryResultRow {
+export interface FavoriteItems {
     user_id: number
     item_id: number
 }
@@ -67,7 +66,7 @@ export interface FavoriteItems extends QueryResultRow {
 // Views
 export interface Purchases extends Transactions {
     item_id: number | null
-    display_name: number
+    display_name: string
     icon_url: string | null
     purchase_price: number
     purchase_price_name: string
@@ -101,7 +100,7 @@ export interface FullTransaction extends Transactions {
     total: number | null
 
     item_id: number | null
-    display_name: number | null
+    display_name: string | null
     icon_url: string | null
     purchase_price: number | null
     purchase_price_name: string | null
