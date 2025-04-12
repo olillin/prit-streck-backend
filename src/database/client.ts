@@ -327,9 +327,7 @@ class DatabaseClient extends EventEmitter {
     }
 
     async getFullUser(userId: number): Promise<tableType.FullUser | undefined> {
-        const row = await this.queryFirstRow<tableType.FullUser>(q.GET_FULL_USER, userId)
-        console.log(row)
-        return row
+        return await this.queryFirstRow<tableType.FullUser>(q.GET_FULL_USER, userId)
     }
 
     async getUsersInGroup(groupId: number): Promise<tableType.Users[]> {
@@ -524,7 +522,6 @@ class DatabaseClient extends EventEmitter {
     // Deposit
     async createDeposit(groupId: number, createdBy: number, createdFor: number, total: number): Promise<Deposit> {
         const row = (await this.queryFirstRow<tableType.Deposits>(q.CREATE_DEPOSIT, groupId, createdBy, createdFor, total))!
-        console.log(row)
         return convert.toDeposit(row)
     }
 

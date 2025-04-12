@@ -215,8 +215,7 @@ export function fromFullTransaction(
     const depositTotal = firstRow.total
     const isDeposit = depositTotal !== null
 
-    const isPurchase = firstRow.item_id !== null //
-        && firstRow.display_name !== null //
+    const isPurchase = firstRow.display_name !== null //
         && firstRow.purchase_price !== null //
         && firstRow.purchase_price_name !== null //
         && firstRow.quantity !== null //

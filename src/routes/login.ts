@@ -69,9 +69,7 @@ export function login(): RequestHandler {
             const userInfo = await authorizationCode.userInfo()
             const gammaUserId: UserId = userInfo.sub
             const groups = await clientApi.getGroupsFor(gammaUserId)
-            console.log('1')
             const group = getAuthorizedGroup(groups)
-            console.log('e1')
             if (!group) {
                 // User is not in the super group
                 sendError(res, ApiError.NoPermission)
@@ -79,9 +77,7 @@ export function login(): RequestHandler {
             }
             const gammaGroupId: GroupId = group.id
 
-            console.log('2')
             const dbUser = await database.softCreateGroupAndUser(gammaGroupId, gammaUserId)
-            console.log('e2')
 
             signJWT({
                 userId: dbUser.id,
