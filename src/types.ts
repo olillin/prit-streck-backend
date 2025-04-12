@@ -26,7 +26,7 @@ export interface User {
 
 export interface Item {
     id: number
-    addedTime: number
+    createdTime: number
     icon?: string
     displayName: string
     prices: Price[]

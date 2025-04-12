@@ -30,10 +30,10 @@ export default async function getItems(req: Request, res: Response) {
             items.sort((a, b) => b.prices[0].price - a.prices[0].price)
             break
         case 'new':
-            items.sort((a, b) => a.addedTime - b.addedTime)
+            items.sort((a, b) => a.createdTime - b.createdTime)
             break
         case 'old':
-            items.sort((a, b) => b.addedTime - a.addedTime)
+            items.sort((a, b) => b.createdTime - a.createdTime)
             break
         case 'name_a2z':
             items.sort((a, b) => a.displayName.localeCompare(b.displayName))

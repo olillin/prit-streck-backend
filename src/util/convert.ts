@@ -65,7 +65,7 @@ export function toItem(
 
     return {
         id: fullItem.id,
-        addedTime: fullItem.created_time.getTime(),
+        createdTime: fullItem.created_time.getTime(),
         displayName: fullItem.display_name,
         prices: prices.map(price => ({
             price: price.price,

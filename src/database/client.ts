@@ -367,7 +367,7 @@ class DatabaseClient extends EventEmitter {
         try {
             // Create bare item
             const dbItem = await this.createBareItem(groupId, displayName, iconUrl)
-            dbFullItem = await this.getFullItem(dbItem.id, userId)
+            dbFullItem = await this.getFullItem(dbItem.id)
             if (!dbFullItem) {
                 throw new Error("Failed to get item after creation")
             }
@@ -394,8 +394,8 @@ class DatabaseClient extends EventEmitter {
         return await this.queryFirstRow(q.GET_ITEM, itemId)
     }
 
-    async getFullItem(itemId: number, userId: number): Promise<tableType.FullItem | undefined> {
-        return await this.queryFirstRow(q.GET_FULL_ITEM, itemId, userId)
+    async getFullItem(itemId: number): Promise<tableType.FullItem | undefined> {
+        return await this.queryFirstRow(q.GET_FULL_ITEM, itemId)
     }
 
     async getItemsInGroup(groupId: number): Promise<tableType.Items[]> {
