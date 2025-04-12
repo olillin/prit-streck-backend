@@ -3,7 +3,6 @@ import {database} from "../../config/clients";
 import {ItemSortMode, ItemsResponse, ResponseBody} from "../../types";
 import {getGroupId, getUserId} from "../../middleware/validateToken";
 import * as convert from "../../util/convert";
-import {splitFullItemWithPrices} from "../../util/convert";
 
 export default async function getItems(req: Request, res: Response) {
     const sort: ItemSortMode = req.query.sort as ItemSortMode
@@ -17,7 +16,7 @@ export default async function getItems(req: Request, res: Response) {
         .filter(dbItem => !(!dbItem.visible && visibleOnly))
     const groupedItems = Map.groupBy(visibleItems, (dbItem) => dbItem.id)
     const items = Array.from(groupedItems.values())
-        .map(dbFullItemWithPrices => convert.toItem(...splitFullItemWithPrices(dbFullItemWithPrices)))
+        .map(dbFullItemWithPrices => convert.toItem(dbFullItemWithPrices))
 
     // Sort by popularity by default and when two items are equal in order
     items.sort((a, b) => b.timesPurchased - a.timesPurchased)

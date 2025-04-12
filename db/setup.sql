@@ -118,3 +118,8 @@ SELECT i.id, i.group_id, i.display_name, i.icon_url, i.created_time, i.visible,
                   WHERE p.item_id = i.id
                   ), 0) AS times_purchased
 FROM items i;
+
+CREATE VIEW full_transactions AS
+SELECT *, NULL AS item_id, NULL AS display_name, NULL AS icon_url,
+       NULL AS purchase_price, NULL AS purchase_price_name, NULL AS quantity FROM deposits
+UNION ALL SELECT *, NULL AS total FROM purchases ORDER BY created_time DESC

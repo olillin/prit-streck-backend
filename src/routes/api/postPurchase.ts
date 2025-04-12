@@ -1,68 +1,26 @@
 import {Request, Response} from "express";
 import {database} from "../../config/clients";
-import {CreatedTransactionResponse, PostPurchaseBody, Purchase, ResponseBody} from "../../types";
-import {GroupId, UserId} from "gammait";
+import {CreatedTransactionResponse, PostPurchaseBody, ResponseBody} from "../../types";
 import {getGroupId, getUserId} from "../../middleware/validateToken";
-import {ApiError, sendError, unexpectedError} from "../../errors";
-import * as tableType from "../../database/types";
-import * as getter from "../../util/getter";
+import {sendError, unexpectedError} from "../../errors";
 
 export default async function postPurchase(req: Request, res: Response) {
     const {userId: createdFor, items} = req.body as PostPurchaseBody
 
-    const userId: UserId = getUserId(res)
-    const groupId: GroupId = getGroupId(res)
+    const groupId: number = getGroupId(res)
+    const createdBy: number = getUserId(res)
 
-    const user = await db.getUser(userId)
+    const purchase = await database.createPurchase(groupId, createdBy, createdFor, items)
+    const user = await database.getFullUser(createdFor)
     if (!user) {
-        sendError(res, ApiError.UserNotExist)
+        sendError(res, unexpectedError("Failed to get user balance after creating purchase"))
         return
     }
-
-    // Create transaction
-    let dbTransaction: tableType.Transactions
-    try {
-        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
-    } catch (e) {
-        const message = 'Failed to create purchase transaction, ' + e
-        console.error(message)
-        sendError(res, unexpectedError(message))
-        return
-    }
-
-    // Add purchase items
-    let total = 0
-
-    const itemPromises = items.map(async item => {
-        const dbItem = await getter.item(item.id, userId)
-
-        // Update purchase total
-        total += item.purchasePrice.price * item.quantity
-
-        // Update times purchased
-        const timesPurchased = dbItem.timesPurchased + item.quantity
-        await db.updateItem(dbItem.id, ['timespurchased'], [timesPurchased])
-
-        return db.addPurchasedItem(
-            dbTransaction.id, //
-            item.quantity,
-            item.purchasePrice,
-            dbItem.id,
-            dbItem.displayName,
-            dbItem.icon
-        )
-    })
-    await Promise.all(itemPromises)
-
-    // Update user balance
-    const balance = user.balance - total
-    await db.setBalance(userId, balance)
-
-    const transaction: Purchase = await getter.purchase(dbTransaction.id)
+    const balance = user.balance
     const body: ResponseBody<CreatedTransactionResponse> = {
-        data: {transaction, balance},
+        data: {transaction: purchase, balance},
     }
 
-    const resourceUri = req.baseUrl + `/group/transaction/${transaction.id}`
+    const resourceUri = req.baseUrl + `/group/transaction/${purchase.id}`
     res.status(201).set('Location', resourceUri).json(body)
 }

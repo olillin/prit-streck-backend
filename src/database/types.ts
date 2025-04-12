@@ -65,13 +65,8 @@ export interface FavoriteItems extends QueryResultRow {
 }
 
 // Views
-export interface Purchases extends QueryResultRow {
-    id: number
-    group_id: number
-    created_by: number
-    created_for: number
-    created_time: Date
-    item_id: number
+export interface Purchases extends Transactions {
+    item_id: number | null
     display_name: number
     icon_url: string | null
     purchase_price: number
@@ -100,4 +95,15 @@ export interface FullItemWithPrices extends FullItem {
 
     price: number
     price_display_name: string
+}
+
+export interface FullTransaction extends Transactions {
+    total: number | null
+
+    item_id: number | null
+    display_name: number | null
+    icon_url: string | null
+    purchase_price: number | null
+    purchase_price_name: string | null
+    quantity: number | null
 }

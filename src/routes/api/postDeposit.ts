@@ -1,54 +1,26 @@
 import {Request, Response} from "express";
 import {database} from "../../config/clients";
-import {CreatedTransactionResponse, Deposit, PostDepositBody, ResponseBody} from "../../types";
-import {GroupId, UserId} from "gammait";
+import {CreatedTransactionResponse, PostDepositBody, ResponseBody} from "../../types";
 import {getGroupId, getUserId} from "../../middleware/validateToken";
-import {ApiError, sendError, unexpectedError} from "../../errors";
-import * as tableType from "../../database/types";
-import * as convert from "../../util/convert";
+import {sendError, unexpectedError} from "../../errors";
 
 export default async function postDeposit(req: Request, res: Response) {
     const { userId: createdFor, total } = req.body as PostDepositBody
 
-    const userId: UserId = getUserId(res)
-    const groupId: GroupId = getGroupId(res)
+    const groupId: number = getGroupId(res)
+    const createdBy: number = getUserId(res)
 
-    const user = await db.getUser(userId)
+    const deposit = await database.createDeposit(groupId, createdBy, createdFor, total)
+    const user = await database.getFullUser(createdFor)
     if (!user) {
-        sendError(res, ApiError.UserNotExist)
+        sendError(res, unexpectedError("Failed to get user balance after creating purchase"))
         return
     }
-
-    // Create transaction
-    let dbTransaction: tableType.Transactions
-    try {
-        dbTransaction = await db.createTransaction(groupId, userId, createdFor)
-    } catch (e) {
-        const message = 'Failed to create deposit transaction, ' + e
-        console.error(message)
-        sendError(res, unexpectedError(message))
-        return
-    }
-
-    let dbDeposit: tableType.Deposits
-    try {
-        dbDeposit = await db.createDeposit(dbTransaction.id, total)
-    } catch (e) {
-        const message = 'Failed to create deposit, ' + e
-        console.error(message)
-        sendError(res, unexpectedError(message))
-        return
-    }
-
-    // Update user balance
-    const balance = user.balance + total
-    await db.setBalance(userId, balance)
-
-    const transaction: Deposit = convert.toDeposit(dbTransaction, dbDeposit)
+    const balance = user.balance
     const body: ResponseBody<CreatedTransactionResponse> = {
-        data: { transaction, balance },
+        data: {transaction: deposit, balance},
     }
 
-    const resourceUri = req.baseUrl + `/group/transaction/${transaction.id}`
+    const resourceUri = req.baseUrl + `/group/transaction/${deposit.id}`
     res.status(201).set('Location', resourceUri).json(body)
 }

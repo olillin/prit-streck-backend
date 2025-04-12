@@ -2,11 +2,11 @@ import {NextFunction, Request, Response} from "express";
 import {clientApi, database} from "../../config/clients";
 import {UserId} from "gammait";
 import {getGroupId, getGammaUserId} from "../../middleware/validateToken";
-import {getAuthorizedGroup} from "../../util/getter";
 import {ApiError, sendError} from "../../errors";
 import * as convert from "../../util/convert";
 import {GroupResponse, ResponseBody, User} from "../../types";
 import * as tableType from "../../database/types";
+import {getAuthorizedGroup} from "../../util/getter";
 
 export default async function getGroup(req: Request, res: Response, next: NextFunction) {
     try {

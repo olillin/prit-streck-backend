@@ -133,16 +133,18 @@ export interface TransactionsResponse extends PaginatedResponse {
 
 // #region Request types
 export interface PostPurchaseBody {
-    userId: UserId
-    items: Array<{
-        id: number
-        quantity: number
-        purchasePrice: Price
-    }>
+    userId: number
+    items: PurchaseItem[]
+}
+
+export interface PurchaseItem {
+    id: number
+    quantity: number
+    purchasePrice: Price
 }
 
 export interface PostDepositBody {
-    userId: UserId
+    userId: number
     total: number
 }
 
@@ -167,5 +169,4 @@ export interface ErrorDefinition {
     code: number
     message: string
 }
-export type ErrorFunction = (...args: any[]) => ErrorDefinition
 export type ErrorResolvable = ErrorDefinition | ApiError
