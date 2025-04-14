@@ -14,7 +14,6 @@ services:
         secrets:
             - db-password
         environment:
-            NODE_ENV: production
             PGPASSWORD_FILE: /run/secrets/db-password
             PGHOST: db
             PGDATABASE: PritStreck

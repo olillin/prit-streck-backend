@@ -16,9 +16,10 @@ const corsOptions: CorsOptions = {
     credentials: exposeCors,
 }
 
-async function main() {
-    const app = express()
+const app = express()
+export default app
 
+async function main() {
     // Rate limit
     const limiter = rateLimit({
         windowMs: 5 * 60 * 1000, // 5 minutes
