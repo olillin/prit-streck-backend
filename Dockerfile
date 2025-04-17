@@ -46,23 +46,6 @@ COPY . .
 RUN npm run build
 
 ################################################################################
-# Create a new stage for running tests with Jest.
-FROM deps AS test
-
-# Use testing node environment by default.
-ENV NODE_ENV=test
-
-COPY . .
-
-# Install development dependencies
-RUN npm i -D
-
-# Run the tests as a non-root user.
-USER node
-
-RUN npm run jest
-
-################################################################################
 # Create a new stage to run the application with minimal runtime dependencies
 # where the necessary files are copied from the build stage.
 FROM base AS final

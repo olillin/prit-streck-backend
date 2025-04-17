@@ -10,8 +10,7 @@
     "rmdevdb": "docker compose down && docker volume rm prit-streck-backend_dev-db-data",
     "cleandev": "npm run rmdevdb && npm run dev",
     "lint": "eslint",
-    "test": "docker compose -f docker-compose.test.yaml up --build --force-recreate",
-    "jest": "jest"
+    "test": "set NODE_ENV=testing&& jest"
   },
   "repository": {
     "type": "git",
