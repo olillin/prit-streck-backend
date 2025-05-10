@@ -1,4 +1,4 @@
-import {GroupId, UserId} from 'gammait'
+import { GroupId, UserId } from 'gammait'
 
 export interface TableNames {
     table_name: string
@@ -40,6 +40,7 @@ export interface Transactions {
     created_by: UserId
     created_for: UserId
     created_time: Date
+    comment: string | null
 }
 
 export interface PurchasedItems {

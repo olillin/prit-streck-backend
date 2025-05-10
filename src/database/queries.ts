@@ -116,6 +116,7 @@ export const GET_PRICES_FOR_ITEM = 'SELECT * FROM prices WHERE item_id = $1 ORDE
 export const REMOVE_PRICES_FOR_ITEM = 'DELETE FROM prices WHERE item_id = $1'
 
 export const CREATE_DEPOSIT = 'INSERT INTO deposits(group_id, created_by, created_for, total) VALUES ($1, $2, $3, $4) RETURNING *'
+export const CREATE_DEPOSIT_WITH_COMMENT = 'INSERT INTO deposits(group_id, created_by, created_for, comment, total) VALUES ($1, $2, $3, $4, $5) RETURNING *'
 export const DELETE_DEPOSIT = 'DELETE FROM deposits WHERE id = $1'
 
 export const ADD_PURCHASED_ITEM = 'INSERT INTO purchased_items(transaction_id, quantity, purchase_price, purchase_price_name, item_id, display_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *'
@@ -123,6 +124,7 @@ export const ADD_PURCHASED_ITEM_WITH_ICON = 'INSERT INTO purchased_items(transac
 export const DELETE_PURCHASED_ITEMS = 'DELETE FROM purchased_items WHERE transaction_id = $1'
 
 export const CREATE_BARE_TRANSACTION = 'INSERT INTO transactions(group_id, created_by, created_for) VALUES ($1, $2, $3) RETURNING *'
+export const CREATE_BARE_TRANSACTION_WITH_COMMENT = 'INSERT INTO transactions(group_id, created_by, created_for, comment) VALUES ($1, $2, $3, $4) RETURNING *'
 export const GET_TRANSACTION = 'SELECT * FROM full_transactions WHERE id = $1'
 export const TRANSACTION_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM transactions WHERE id = $1 AND group_id = $2)'
 export const COUNT_TRANSACTIONS_IN_GROUP = 'SELECT COUNT(*) FROM transactions WHERE group_id = $1'

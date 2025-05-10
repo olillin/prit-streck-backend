@@ -15,7 +15,10 @@ function getGroupId(meta: Meta): number {
 
 //#region Custom validators
 /** Checks that there exists a user with the id in `value` in the same group as the user making the request. */
-export async function checkUserExistsInGroup(value: string, meta: Meta): Promise<void> {
+export async function checkUserExistsInGroup(
+    value: string,
+    meta: Meta
+): Promise<void> {
     // Get user ID
     let userId: number
     try {
@@ -48,7 +51,10 @@ export async function checkTransactionExistsInGroup(
     meta: Meta
 ): Promise<void> {
     const groupId = getGroupId(meta)
-    const exists = await database.transactionExistsInGroup(parseInt(value), groupId)
+    const exists = await database.transactionExistsInGroup(
+        parseInt(value),
+        groupId
+    )
     if (!exists) {
         throw ApiError.TransactionNotExist
     }
@@ -141,6 +147,7 @@ export const postPurchase = () => [
     body('items.*.purchasePrice').exists().isObject(),
     body('items.*.purchasePrice.price').exists().isDecimal(),
     body('items.*.purchasePrice.displayName').exists().isString().trim(),
+    body('comment').optional().isString().trim().isLength({ max: 1000 }).withMessage(ApiError.InvalidComment),
 ]
 
 export const postDeposit = () => [
@@ -151,6 +158,7 @@ export const postDeposit = () => [
         .bail()
         .custom(checkUserExistsInGroup),
     body('total').exists().isDecimal().withMessage(ApiError.InvalidTotal),
+    body('comment').optional().isString().trim().isLength({ max: 1000 }).withMessage(ApiError.InvalidComment),
 ]
 
 export const itemSortModes = <const>[
@@ -202,7 +210,7 @@ export const getItem = () => [
 export const patchItem = () => [
     param('id')
         .exists()
-        .isInt({ min: 1})
+        .isInt({ min: 1 })
         .withMessage(ApiError.InvalidItemId)
         .bail()
         .custom(checkItemExistsInGroup),
@@ -233,7 +241,7 @@ export const patchItem = () => [
 export const deleteItem = () => [
     param('id')
         .exists()
-        .isInt({ min: 1})
+        .isInt({ min: 1 })
         .withMessage(ApiError.InvalidItemId)
         .bail()
         .custom(checkItemExistsInGroup),

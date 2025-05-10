@@ -5,12 +5,12 @@ import {getGroupId, getUserId} from "../../middleware/validateToken";
 import {sendError, unexpectedError} from "../../errors";
 
 export default async function postPurchase(req: Request, res: Response) {
-    const {userId: createdFor, items} = req.body as PostPurchaseBody
+    const {userId: createdFor, items, comment} = req.body as PostPurchaseBody
 
     const groupId: number = getGroupId(res)
     const createdBy: number = getUserId(res)
 
-    const purchase = await database.createPurchase(groupId, createdBy, createdFor, items)
+    const purchase = await database.createPurchase(groupId, createdBy, createdFor, comment, items)
     const user = await database.getFullUser(createdFor)
     if (!user) {
         sendError(res, unexpectedError("Failed to get user balance after creating purchase"))

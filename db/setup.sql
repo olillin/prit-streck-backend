@@ -44,6 +44,7 @@ CREATE TABLE transactions
     created_by   INT         NOT NULL,
     created_for  INT         NOT NULL,
     created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
     FOREIGN KEY (created_for) REFERENCES users (id),
@@ -79,7 +80,7 @@ CREATE TABLE favorite_items
 
 -- Views
 CREATE VIEW purchases AS
-SELECT t.id, t.group_id, t.created_by, t.created_for, t.created_time,
+SELECT t.id, t.group_id, t.created_by, t.created_for, t.created_time, t.comment,
     i.item_id, i.display_name, i.icon_url, i.purchase_price, i.purchase_price_name, i.quantity
 FROM ONLY transactions t LEFT JOIN purchased_items i ON t.id = i.transaction_id;
 
@@ -126,6 +127,7 @@ SELECT
        created_by,
        created_for,
        created_time,
+       comment,
        total,
        NULL AS item_id,
        NULL AS display_name,
@@ -141,6 +143,7 @@ SELECT
     created_by,
     created_for,
     created_time,
+    comment,
     NULL AS total,
     item_id,
     display_name,

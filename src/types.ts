@@ -48,6 +48,8 @@ export interface Transaction<T extends TransactionType> {
     createdBy: UserId
     createdFor: UserId
     createdTime: number
+
+    comment?: string
 }
 
 export interface Purchase extends Transaction<'purchase'> {
@@ -137,6 +139,7 @@ export interface TransactionsResponse extends PaginatedResponse {
 export interface PostPurchaseBody {
     userId: number
     items: PurchaseItem[]
+    comment?: string
 }
 
 export interface PurchaseItem {
@@ -148,6 +151,7 @@ export interface PurchaseItem {
 export interface PostDepositBody {
     userId: number
     total: number
+    comment?: string
 }
 
 export interface PostItemBody {

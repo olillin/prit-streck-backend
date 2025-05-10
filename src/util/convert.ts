@@ -13,7 +13,7 @@ import * as tableType from '../database/types'
 import * as gamma from 'gammait'
 import { groupAvatarUrl, userAvatarUrl } from 'gammait/urls'
 import { Item, User } from '../types'
-import {FullItemWithPrices} from "../database/types";
+import { FullItemWithPrices } from '../database/types'
 
 export function splitFullItemWithPrices(
     fullItemWithPrices: tableType.FullItemWithPrices[]
@@ -31,11 +31,13 @@ export function splitFullItemWithPrices(
         visible: fullItemWithPrices[0].visible,
         times_purchased: fullItemWithPrices[0].times_purchased,
     }
-    const prices: tableType.Prices[] = fullItemWithPrices.map(fullItemWithPrice => ({
-        item_id: fullItemWithPrice.id,
-        price: fullItemWithPrice.price,
-        display_name: fullItemWithPrice.price_display_name,
-    }))
+    const prices: tableType.Prices[] = fullItemWithPrices.map(
+        fullItemWithPrice => ({
+            item_id: fullItemWithPrice.id,
+            price: fullItemWithPrice.price,
+            display_name: fullItemWithPrice.price_display_name,
+        })
+    )
     const isFavorite = fullItemWithPrices[0].favorite
 
     return [item, prices, isFavorite]
@@ -56,7 +58,9 @@ export function toItem(
     let prices: tableType.Prices[]
     let favorite: boolean
     if (b === undefined || c === undefined) {
-        [fullItem, prices, favorite] = splitFullItemWithPrices(a as FullItemWithPrices[])
+        ;[fullItem, prices, favorite] = splitFullItemWithPrices(
+            a as FullItemWithPrices[]
+        )
     } else {
         fullItem = a as tableType.FullItem
         prices = b
@@ -86,13 +90,24 @@ export function toUser(
     dbUser: tableType.FullUser,
     gammaUser: gamma.User | gamma.UserInfo | null
 ): User {
-    const names = (gammaUser === null) ? {
-        nick: "N/A", firstName: "N/A", lastName: "N/A",
-    } : (isUserInfo(gammaUser) ? {
-        nick: gammaUser.nickname, firstName: gammaUser.given_name, lastName: gammaUser.family_name,
-    } : {
-        nick: gammaUser.nick, firstName: gammaUser.firstName, lastName: gammaUser.lastName,
-    })
+    const names =
+        gammaUser === null
+            ? {
+                  nick: 'N/A',
+                  firstName: 'N/A',
+                  lastName: 'N/A',
+              }
+            : isUserInfo(gammaUser)
+            ? {
+                  nick: gammaUser.nickname,
+                  firstName: gammaUser.given_name,
+                  lastName: gammaUser.family_name,
+              }
+            : {
+                  nick: gammaUser.nick,
+                  firstName: gammaUser.firstName,
+                  lastName: gammaUser.lastName,
+              }
 
     return {
         id: dbUser.id,
@@ -103,7 +118,10 @@ export function toUser(
     }
 }
 
-export function toGroup(dbGroup: tableType.Groups, gammaGroup: gamma.Group | gamma.GroupWithPost): Group {
+export function toGroup(
+    dbGroup: tableType.Groups,
+    gammaGroup: gamma.Group | gamma.GroupWithPost
+): Group {
     return {
         id: dbGroup.id,
         gammaId: dbGroup.gamma_id,
@@ -151,6 +169,10 @@ export function toTransaction<T extends TransactionType>(
         createdBy: dbTransaction.created_by,
         createdFor: dbTransaction.created_for,
         createdTime: dbTransaction.created_time.getTime(),
+        ...(!!dbTransaction.comment &&
+            dbTransaction.comment.length > 0 && {
+                comment: dbTransaction.comment,
+            }),
     }
 }
 
@@ -161,7 +183,9 @@ export function toPurchasedItem(
         item: {
             displayName: dbPurchasedItem.display_name,
             ...(!!dbPurchasedItem.item_id && { id: dbPurchasedItem.item_id }),
-            ...(!!dbPurchasedItem.icon_url && { icon: dbPurchasedItem.icon_url }),
+            ...(!!dbPurchasedItem.icon_url && {
+                icon: dbPurchasedItem.icon_url,
+            }),
         },
         quantity: dbPurchasedItem.quantity,
         purchasePrice: {
@@ -171,25 +195,23 @@ export function toPurchasedItem(
     }
 }
 
-export function toPurchase(
-    dbPurchase: tableType.Purchases[]
-): Purchase {
+export function toPurchase(dbPurchase: tableType.Purchases[]): Purchase {
     return {
         items: dbPurchase.map(toPurchasedItem),
         ...toTransaction(dbPurchase[0], 'purchase'),
     }
 }
 
-export function toDeposit(
-    dbDeposit: tableType.Deposits
-): Deposit {
+export function toDeposit(dbDeposit: tableType.Deposits): Deposit {
     return {
         total: dbDeposit.total,
         ...toTransaction(dbDeposit, 'deposit'),
     }
 }
 
-export function toTransactions(dbFullTransaction: tableType.FullTransaction[]): Array<Deposit | Purchase> {
+export function toTransactions(
+    dbFullTransaction: tableType.FullTransaction[]
+): Array<Deposit | Purchase> {
     // Group rows
     const transactionGroups = new Map<number, tableType.FullTransaction[]>()
     for (const row of dbFullTransaction) {
@@ -215,10 +237,11 @@ export function fromFullTransaction(
     const depositTotal = firstRow.total
     const isDeposit = depositTotal !== null
 
-    const isPurchase = firstRow.display_name !== null //
-        && firstRow.purchase_price !== null //
-        && firstRow.purchase_price_name !== null //
-        && firstRow.quantity !== null //
+    const isPurchase =
+        firstRow.display_name !== null && //
+        firstRow.purchase_price !== null && //
+        firstRow.purchase_price_name !== null && //
+        firstRow.quantity !== null //
 
     if (isDeposit) {
         const dbDeposit: tableType.Deposits = {
@@ -227,24 +250,27 @@ export function fromFullTransaction(
             created_by: firstRow.created_by,
             created_for: firstRow.created_for,
             created_time: firstRow.created_time,
+            comment: firstRow.comment,
             total: depositTotal,
         }
         return toDeposit(dbDeposit)
     }
     if (isPurchase) {
-        const dbPurchase: tableType.Purchases[] = dbFullTransaction.map<tableType.Purchases>(row => ({
-            id: row.id,
-            group_id: row.group_id,
-            created_by: row.created_by,
-            created_for: row.created_for,
-            created_time: row.created_time,
-            item_id: row.item_id,
-            display_name: row.display_name!,
-            icon_url: row.icon_url,
-            purchase_price: row.purchase_price!,
-            purchase_price_name: row.purchase_price_name!,
-            quantity: row.quantity!,
-        }))
+        const dbPurchase: tableType.Purchases[] =
+            dbFullTransaction.map<tableType.Purchases>(row => ({
+                id: row.id,
+                group_id: row.group_id,
+                created_by: row.created_by,
+                created_for: row.created_for,
+                created_time: row.created_time,
+                comment: row.comment,
+                item_id: row.item_id,
+                display_name: row.display_name!,
+                icon_url: row.icon_url,
+                purchase_price: row.purchase_price!,
+                purchase_price_name: row.purchase_price_name!,
+                quantity: row.quantity!,
+            }))
         return toPurchase(dbPurchase)
     }
     throw new Error('Transaction is invalid, not deposit nor purchase')
