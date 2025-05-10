@@ -23,6 +23,7 @@ export enum ApiError {
     GammaToken,
     InvalidGammaResponse,
     UnreachableGamma,
+    FailedGetGroups,
 
     // Login
     NoAuthorizationCode,
@@ -32,6 +33,7 @@ export enum ApiError {
     ItemCount,
     PurchaseNothing,
     PurchaseInvisible,
+    InvalidComment,
 
     // Create deposit
     InvalidTotal,
@@ -72,6 +74,7 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
     [ApiError.GammaToken]: err(502, 'Failed to get token from Gamma, your authorization code may be invalid'),
     [ApiError.InvalidGammaResponse]: err(502, 'Received an invalid response from Gamma'),
     [ApiError.UnreachableGamma]: err(504, 'Unable to reach Gamma'),
+    [ApiError.FailedGetGroups]: err(502, 'Failed to get groups for user'),
 
     // Login
     [ApiError.NoAuthorizationCode]: err(401, 'No authorization code provided'),
@@ -81,6 +84,7 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
     [ApiError.ItemCount]: err(400, 'Item count must be an integer greater than 0'),
     [ApiError.PurchaseNothing]: err(400, 'Must purchase at least one item'),
     [ApiError.PurchaseInvisible]: err(403, 'Cannot purchase a non-visible item'),
+    [ApiError.InvalidComment]: err(400, 'Comment must not be longer than 1000 characters'),
 
     // Create deposit
     [ApiError.InvalidTotal]: err(400, 'Total must be a number'),

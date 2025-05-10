@@ -5,14 +5,16 @@ import { ApiError } from './errors'
 
 // #region Basic types
 export interface Group {
-    id: GroupId
+    id: number
+    gammaId: GroupId
 
     prettyName: string
     avatarUrl: string
 }
 
 export interface User {
-    id: UserId
+    id: number
+    gammaId: UserId
 
     firstName: string
     lastName: string
@@ -24,7 +26,7 @@ export interface User {
 
 export interface Item {
     id: number
-    addedTime: number
+    createdTime: number
     icon?: string
     displayName: string
     prices: Price[]
@@ -46,6 +48,8 @@ export interface Transaction<T extends TransactionType> {
     createdBy: UserId
     createdFor: UserId
     createdTime: number
+
+    comment?: string
 }
 
 export interface Purchase extends Transaction<'purchase'> {
@@ -92,10 +96,14 @@ export interface JWT {
     expires_in: number
 }
 
-export interface LocalJwt extends JwtPayload {
-    userId: UserId
-    groupId: GroupId
+export interface LoggedInUser {
+    userId: number
+    groupId: number
+    gammaUserId: UserId
+    gammaGroupId: GroupId
 }
+
+export interface LocalJwt extends JwtPayload, LoggedInUser {}
 
 export interface LoginResponse extends UserResponse, JWT {
     token_type: string
@@ -129,17 +137,21 @@ export interface TransactionsResponse extends PaginatedResponse {
 
 // #region Request types
 export interface PostPurchaseBody {
-    userId: UserId
-    items: Array<{
-        id: number
-        quantity: number
-        purchasePrice: Price
-    }>
+    userId: number
+    items: PurchaseItem[]
+    comment?: string
+}
+
+export interface PurchaseItem {
+    id: number
+    quantity: number
+    purchasePrice: Price
 }
 
 export interface PostDepositBody {
-    userId: UserId
+    userId: number
     total: number
+    comment?: string
 }
 
 export interface PostItemBody {
@@ -163,5 +175,4 @@ export interface ErrorDefinition {
     code: number
     message: string
 }
-export type ErrorFunction = (...args: any[]) => ErrorDefinition
 export type ErrorResolvable = ErrorDefinition | ApiError

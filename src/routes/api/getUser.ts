@@ -1,35 +1,34 @@
 import {Request, Response} from "express";
 import {clientApi, database} from "../../config/clients";
-import {UserId} from "gammait";
-import {getUserId} from "../../middleware/validateToken";
+import {getGammaUserId, getUserId} from "../../middleware/validateToken";
 import {ApiError, sendError} from "../../errors";
-import {getAuthorizedGroup} from "../../util/getter";
 import {ResponseBody, UserResponse} from "../../types";
 import * as convert from "../../util/convert";
+import {UserId} from "gammait";
+import {getAuthorizedGroup} from "../../util/getter";
 
 export default async function getUser(req: Request, res: Response) {
-    const db = await database()
-
-    const userId: UserId = getUserId(res)
+    const userId: number = getUserId(res)
+    const gammaUserId: UserId = getGammaUserId(res)
     console.log(`Getting user info for: ${userId}`)
 
     // Get requests
-    const dbUserPromise = db.getUser(userId).catch(reason => {
+    const dbUserPromise = database.getFullUser(userId).catch(reason => {
         if (!res.headersSent) {
             console.log(reason)
             sendError(res, 500, 'Failed to fetch user from database')
         }
     })
-    const gammaUserPromise = clientApi.getUser(userId).catch(reason => {
+    const gammaUserPromise = clientApi.getUser(gammaUserId).catch(reason => {
         if (!res.headersSent) {
             console.log(reason)
-            sendError(res, 404, 'User does not exist')
+            sendError(res, ApiError.UserNotExist)
         }
     })
-    const groupsPromise = clientApi.getGroupsFor(userId).catch(reason => {
+    const groupsPromise = clientApi.getGroupsFor(gammaUserId).catch(reason => {
         if (!res.headersSent) {
             console.log(reason)
-            sendError(res, 500, 'Failed to fetch groups')
+            sendError(res, ApiError.FailedGetGroups)
         }
     })
 

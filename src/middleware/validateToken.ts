@@ -3,7 +3,7 @@ import { ApiError, sendError } from '../errors'
 import jwt from 'jsonwebtoken'
 import env from '../config/env'
 import { LocalJwt } from '../types'
-import { UserId } from 'gammait'
+import {GroupId, UserId} from 'gammait'
 
 function validateToken(req: Request, res: Response, next: NextFunction) {
     console.log(`${req.method} to API: ${req.path}`)
@@ -56,12 +56,22 @@ export function verifyToken(token: string): LocalJwt {
     }) as LocalJwt
 }
 
-export function getUserId(res: Response): UserId {
+export function getUserId(res: Response): number {
     const jwt: LocalJwt = res.locals.jwt
     return jwt.userId
 }
 
-export function getGroupId(res: Response): UserId {
+export function getGammaUserId(res: Response): UserId {
+    const jwt: LocalJwt = res.locals.jwt
+    return jwt.gammaUserId
+}
+
+export function getGroupId(res: Response): number {
     const jwt: LocalJwt = res.locals.jwt
     return jwt.groupId
+}
+
+export function getGammaGroupId(res: Response): GroupId {
+    const jwt: LocalJwt = res.locals.jwt
+    return jwt.gammaGroupId
 }
