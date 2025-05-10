@@ -1,47 +1,30 @@
 import {Request, Response} from "express";
 import {database} from "../../config/clients";
-import {GroupId} from "gammait";
 import {getGroupId} from "../../middleware/validateToken";
-import {ResponseBody, Transaction, TransactionsResponse, TransactionType} from "../../types";
-import * as convert from "../../util/convert";
+import {ResponseBody, TransactionsResponse} from "../../types";
 
 export default async function getTransactions(req: Request, res: Response) {
-    const db = await database()
     const limit = parseInt(req.query.limit as string)
     const offset = parseInt(req.query.offset as string)
 
-    const groupId: GroupId = getGroupId(res)
+    const groupId: number = getGroupId(res)
 
-    const count = await db.countTransactionsInGroup(groupId)
+    const count = await database.countTransactionsInGroup(groupId)
 
-    const dbTransactions = await db.getTransactionsInGroup(groupId)
+    const transactions = await database.getTransactionsInGroup(groupId, limit, offset)
 
-    const transactions: Transaction<TransactionType>[] = (
-        await Promise.all(
-            dbTransactions.map(async dbTransaction => {
-                const dbPurchasedItems = await db.getPurchasedItems(
-                    dbTransaction.id
-                )
-                if (dbPurchasedItems.length > 0) {
-                    // Transaction is purchase
-                    return convert.toPurchase(dbTransaction, dbPurchasedItems)
-                }
-                const dbDeposit = await db.getDeposit(dbTransaction.id)
-                if (dbDeposit) {
-                    // Transaction is deposit
-                    return convert.toDeposit(dbTransaction, dbDeposit)
-                }
+    let previousOffset = offset - limit
+    const clamped = previousOffset < 0
+    if (clamped) previousOffset = 0
+    const previousUrl = req.baseUrl + `/group/transaction?offset=${previousOffset}&limit=${clamped ? offset : limit}`
+    const nextUrl = req.baseUrl + `/group/transaction?offset=${offset + limit}&limit=${limit}`
 
-                console.warn(
-                    `Transaction ${dbTransaction.id} has no purchased items or deposit`
-                )
-                return undefined
-            })
-        )
-    ).filter(x => x !== undefined)
-
-    const body: ResponseBody<TransactionsResponse> = { data: { transactions } }
+    const body: ResponseBody<TransactionsResponse> = {
+        data: {
+            transactions,
+            ...(offset > 0) && {previous: previousUrl},
+            ...(count > offset + limit) && {next: nextUrl},
+        }
+    }
     res.json(body)
-
-    // TODO: Paginate transactions
 }

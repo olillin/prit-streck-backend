@@ -17,7 +17,7 @@ services:
             NODE_ENV: production
             PGPASSWORD_FILE: /run/secrets/db-password
             PGHOST: db
-            PGDATABASE: PritStreck
+            PGDATABASE: prit_streck
         env_file: ".env"
         restart: always
 
@@ -43,7 +43,7 @@ services:
             - db-data:/var/lib/postgresql/data
             - ./db:/docker-entrypoint-initdb.d
         environment:
-            - POSTGRES_DB=PritStreck
+            - POSTGRES_DB=prit_streck
             - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
         expose:
             - 5432

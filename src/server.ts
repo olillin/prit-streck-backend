@@ -1,6 +1,6 @@
 import express, {NextFunction, Request, Response} from 'express'
 import rateLimit from 'express-rate-limit'
-import {authorizationCode, database} from './config/clients'
+import {authorizationCode} from './config/clients'
 import env from './config/env'
 import {sendError, unexpectedError} from './errors'
 import createApiRouter from './routers/api'
@@ -53,8 +53,8 @@ async function main() {
 
     app.listen(parseInt(env.PORT))
     console.log(`Listening on port ${env.PORT}`)
-
-    // Connect to database
-    database()
 }
-main()
+
+main().then(() => {
+    console.log("Server ready")
+})

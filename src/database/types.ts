@@ -1,66 +1,109 @@
 import { GroupId, UserId } from 'gammait'
-import { QueryResultRow } from 'pg'
 
-export interface Users extends QueryResultRow {
-    gammaid: UserId
-    groupid: GroupId
-    balance: number
+export interface TableNames {
+    table_name: string
 }
 
-export interface Groups extends QueryResultRow {
-    gammaid: GroupId
-}
-
-export interface Items extends QueryResultRow {
+export interface Users {
     id: number
-    groupid: GroupId
-    displayname: string
-    iconurl: string | null
-    addedtime: Date
-    timespurchased: number
+    gamma_id: UserId
+    group_id: number
+}
+
+export interface Groups {
+    id: number
+    gamma_id: GroupId
+}
+
+export interface Items {
+    id: number
+    group_id: number
+    display_name: string
+    icon_url: string | null
+    created_time: Date
     visible: boolean
 }
 
-export interface Prices extends QueryResultRow {
-    itemid: number
+export interface FullItem extends Items {
+    times_purchased: number
+}
+
+export interface Prices {
+    item_id: number
     price: number
-    displayname: string
+    display_name: string
 }
 
-export interface Transactions extends QueryResultRow {
+export interface Transactions {
     id: number
-    groupid: GroupId
-    createdby: UserId
-    createdfor: UserId
-    createdtime: Date
+    group_id: number
+    created_by: UserId
+    created_for: UserId
+    created_time: Date
+    comment: string | null
 }
 
-export interface PurchasedItems extends QueryResultRow {
-    purchaseid: number
+export interface PurchasedItems {
+    transaction_id: number
 
+    item_id: number | null
+    display_name: string
+    icon_url: string | null
+
+    purchase_price: number
+    purchase_price_name: string
     quantity: number
-    purchaseprice: number
-    purchasepricename: string
-
-    itemid: number | null
-    displayname: string
-    icon: string | null
 }
 
-export interface Deposits extends QueryResultRow {
-    transactionid: number
+export interface Deposits extends Transactions {
     total: number
 }
 
-export interface FavoriteItems extends QueryResultRow {
-    userid: UserId
-    itemid: number
+export interface FavoriteItems {
+    user_id: number
+    item_id: number
 }
 
-export interface Exists extends QueryResultRow {
-    exists: string
+// Views
+export interface Purchases extends Transactions {
+    item_id: number | null
+    display_name: string
+    icon_url: string | null
+    purchase_price: number
+    purchase_price_name: string
+    quantity: number
 }
 
-export interface Count extends QueryResultRow {
-    count: string
+export interface UsersTotalDeposited extends Users {
+    total: number
+}
+
+export interface UserTotalPurchased extends Users {
+    total: number
+}
+
+export interface UserBalances extends Users {
+    balance: number
+}
+
+export interface FullUser extends UserBalances {
+    group_gamma_id: GroupId
+}
+
+export interface FullItemWithPrices extends FullItem {
+    favorite: boolean
+
+    price: number
+    price_display_name: string
+}
+
+export interface FullTransaction extends Transactions {
+    total: number | null
+
+    item_id: number | null
+    display_name: string | null
+    icon_url: string | null
+    purchase_price: number | null
+    purchase_price_name: string | null
+    quantity: number | null
 }
