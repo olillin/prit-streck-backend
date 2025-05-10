@@ -7,6 +7,7 @@ services:
         environment:
             POSTGRES_PASSWORD_FILE: null
             POSTGRES_PASSWORD: secret-dev-password
+            DEV_MODE: true
         volumes:
             - dev-db-data:/var/lib/postgresql/data
         extends:
