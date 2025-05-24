@@ -176,8 +176,8 @@ extends [Transaction](#transaction)
 ```javascript
 {
   "<item id>": { // There may be more keys for different items
-    "amount": int, // How much to change the stock by
-    "absolute": bool // Set stock to 'amount' instead of adding it. Defaults to false
+    "quantity": int, // How much to change the stock by
+    "absolute": bool // Set stock to 'quantity' instead of adding it. Defaults to false
   }
 }
 ```
