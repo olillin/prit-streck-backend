@@ -89,6 +89,7 @@ UUID of a group in gamma.
   "icon": string?, // URL to the item icon
   "displayName": string,
   "prices": Price[],
+  "stock": int, // How many of the item is available
   "timesPurchased": int,
   "visible": boolean, // If this item is visible
   "favorite": boolean // If the logged in user has favorited this item
@@ -108,10 +109,9 @@ UUID of a group in gamma.
 
 ```javascript
 {
-  "type": "purchase" | "deposit",
+  "type": string,
   "id": int, // Numeric auto-incrementing id
   "createdBy": int, // Id of the user who created the transaction
-  "createdFor": int, // Id of the user who the transaction applies to
   "createdTime": int // Timestamp when this transaction was created in ms
   "comment": string? // Optional comment
 }
@@ -124,6 +124,7 @@ extends [Transaction](#transaction)
 ```javascript
 {
   "type": "purchase",
+  "createdFor": int, // Id of the user who the transaction applies to
   "items": PurchasedItem[]
 }
 ```
@@ -149,11 +150,37 @@ extends [Transaction](https://docs.google.com/document/d/1KiCo3THSqslC1P8mMXRVON
 ```javascript
 {
   "type": "deposit",
+  "createdFor": int, // Id of the user who the transaction applies to
   "total": decimal // Deposit amount in SEK
 }
 ```
 
-##
+### StockUpdate
+
+extends [Transaction](#transaction)
+
+```javascript
+{
+  "type": "stockUpdate", 
+  "items": {
+    "<item id>": {
+      "before": int,
+      "after": int
+    }
+  }
+}
+```
+
+### ItemStockUpdates
+
+```javascript
+{
+  "<item id>": { // There may be more keys for different items
+    "amount": int, // How much to change the stock by
+    "absolute": bool // Set stock to 'amount' instead of adding it. Defaults to false
+  }
+}
+```
 
 ## Authorization
 
@@ -399,7 +426,7 @@ Get a specific transaction.
 ```javascript
 {
   "data": {
-    "transaction": Purchase | Deposit
+    "transaction": Transaction
   }
 }
 ```
@@ -514,6 +541,57 @@ The newly created transaction:
 |-------|------------------------|
 | 400   | Total must be a number |
 | 404   | User does not exist    |
+
+### POST /group/stock
+
+Create a new [stock update](#stockupdate).
+
+#### Body
+
+| Name    | Required | Type                                  | Description                                  |
+|---------|----------|---------------------------------------|----------------------------------------------|
+| items   | Y        | [ItemStockUpdates](#itemstockupdates) | How much to add to the user's balance in SEK |
+| comment | N        | string                                | An optional comment                          |
+
+#### Response
+
+The newly created transaction:
+
+```javascript
+{
+  "data": {
+    "transaction": StockUpdate
+  }
+}
+```
+
+##### Example
+
+```javascript
+{
+  "data": {
+    "transaction": {
+      "type": "stockUpdate",
+      "items": {
+        "1": {
+          "before": 0,
+          "after": 20
+        },
+        "2": {
+          "before": 3,
+          "after": 80
+        }
+      }
+    }
+  }
+}
+```
+
+#### Errors
+
+| Code | Error                              |
+|------|------------------------------------|
+| 404  | Item with id \<id\> does not exist |
 
 ### GET /group/item
 
