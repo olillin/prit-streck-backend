@@ -38,13 +38,13 @@ INSERT INTO prices(item_id, price, display_name)
 VALUES (3, 15, 'Extern');
 
 -- Group 1 transactions
-INSERT INTO transactions(group_id, created_by, created_for)
+INSERT INTO purchases(group_id, created_by, created_for)
 VALUES (1, 1, 1);
 INSERT INTO purchased_items
 (transaction_id, item_id, display_name, purchase_price, purchase_price_name, quantity)
 VALUES (1, 2, 'Läsk', 7, 'P.R.I.T.', 2);
 
-INSERT INTO transactions(group_id, created_by, created_for)
+INSERT INTO purchases(group_id, created_by, created_for)
 VALUES (1, 1, 2);
 INSERT INTO purchased_items
 (transaction_id, item_id, display_name, purchase_price, purchase_price_name, quantity)
@@ -60,7 +60,7 @@ INSERT INTO favorite_items(user_id, item_id)
 VALUES (1, 2);
 
 -- Group 2 transactions
-INSERT INTO transactions(group_id, created_by, created_for)
+INSERT INTO purchases(group_id, created_by, created_for)
 VALUES (2, 3, 4);
 INSERT INTO purchased_items(transaction_id, item_id, display_name, purchase_price, purchase_price_name,
                             quantity)
