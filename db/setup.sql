@@ -130,14 +130,32 @@ $$;
 
 CREATE OR REPLACE FUNCTION item_stock(id INT)
     RETURNS INT
-    LANGUAGE SQL AS
+    LANGUAGE PLPGSQL AS
 $$
-SELECT coalesce((SELECT i.after
-                 FROM item_stock_updates i
-                 WHERE i.item_id = id
-                 ORDER BY (SELECT created_time FROM stock_updates t WHERE t.id = i.transaction_id) DESC
-                 LIMIT 1),
-                0);
+DECLARE
+    last_stock_time TIMESTAMPTZ;
+DECLARE
+    last_stock_amount INT;
+DECLARE
+    purchased_after_stock INT;
+BEGIN
+    SELECT u.created_time, u.after
+    INTO last_stock_time, last_stock_amount
+    FROM full_stock_updates u
+    WHERE u.item_id = item_stock.id
+    ORDER BY u.created_time DESC;
+
+    SELECT coalesce(last_stock_time, 'epoch') INTO last_stock_time;
+    SELECT coalesce(last_stock_amount, 0) INTO last_stock_amount;
+
+    SELECT coalesce((SELECT SUM(p.quantity)
+                     FROM full_purchases p
+                     WHERE p.item_id = item_stock.id
+                       AND p.created_time >= last_stock_time), 0)
+    INTO purchased_after_stock;
+
+    RETURN last_stock_amount - purchased_after_stock;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION set_stock_before()
@@ -182,8 +200,20 @@ SELECT p.id,
        i.purchase_price,
        i.purchase_price_name,
        i.quantity
-FROM ONLY purchases p
+FROM purchases p
          LEFT JOIN purchased_items i ON p.id = i.transaction_id;
+
+CREATE VIEW full_stock_updates  AS
+SELECT u.id,
+       u.group_id,
+       u.created_by,
+       u.created_time,
+       u.comment,
+       i.item_id,
+       i.before,
+       i.after
+FROM stock_updates u
+         LEFT JOIN item_stock_updates i on u.id = i.transaction_id;
 
 CREATE VIEW users_total_deposited AS
 SELECT u.id,
@@ -220,34 +250,15 @@ SELECT u.id,
 FROM user_balances u
          LEFT OUTER JOIN groups g on u.group_id = g.id;
 
-CREATE VIEW full_transactions AS
+CREATE VIEW transaction_types AS
 SELECT id,
-       group_id,
-       created_by,
-       created_for,
-       created_time,
-       comment,
-       total,
-       NULL AS item_id,
-       NULL AS display_name,
-       NULL AS icon_url,
-       NULL AS purchase_price,
-       NULL AS purchase_price_name,
-       NULL AS quantity
+       'purchase' AS type
+FROM purchases
+UNION ALL
+SELECT id,
+       'deposit' AS type
 FROM deposits
 UNION ALL
 SELECT id,
-       group_id,
-       created_by,
-       created_for,
-       created_time,
-       comment,
-       NULL AS total,
-       item_id,
-       display_name,
-       icon_url,
-       purchase_price,
-       purchase_price_name,
-       quantity
-FROM full_purchases
-ORDER BY created_time DESC
+       'stock_update' AS type
+FROM stock_updates;
