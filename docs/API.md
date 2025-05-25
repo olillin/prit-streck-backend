@@ -162,23 +162,23 @@ extends [Transaction](#transaction)
 ```javascript
 {
   "type": "stockUpdate", 
-  "items": {
-    "<item id>": {
+  "items": [
+    {
+      "id": int,
       "before": int,
       "after": int
     }
-  }
+  ]
 }
 ```
 
-### ItemStockUpdates
+### ItemStockUpdate
 
 ```javascript
 {
-  "<item id>": { // There may be more keys for different items
-    "amount": int, // How much to change the stock by
-    "absolute": bool // Set stock to 'amount' instead of adding it. Defaults to false
-  }
+  "id": int,       // The item id
+  "amount": int,   // How much to change the stock by
+  "absolute": bool // Set stock to 'amount' instead of adding it. Defaults to false
 }
 ```
 
@@ -276,8 +276,6 @@ Data about the user and their group.
   }
 }
 ```
-
-###
 
 ### GET /group
 
@@ -471,9 +469,9 @@ The newly created transaction:
     "transaction": {
       "type": "purchase",
       "id": 7,
-      "purchaseTime": 1738594127,
-      "purchasedBy": 1,
-      "purchasedFor": 1,
+      "createdTime": 1738594127,
+      "createdBy": 1,
+      "createdFor": 1,
       "items": [
         {
           "id": 3,
@@ -548,10 +546,10 @@ Create a new [stock update](#stockupdate).
 
 #### Body
 
-| Name    | Required | Type                                  | Description                                  |
-|---------|----------|---------------------------------------|----------------------------------------------|
-| items   | Y        | [ItemStockUpdates](#itemstockupdates) | How much to add to the user's balance in SEK |
-| comment | N        | string                                | An optional comment                          |
+| Name    | Required | Type                                  | Description         |
+|---------|----------|---------------------------------------|---------------------|
+| items   | Y        | [ItemStockUpdate](#itemstockupdate)[] |                     |
+| comment | N        | string                                | An optional comment |
 
 #### Response
 
@@ -572,16 +570,18 @@ The newly created transaction:
   "data": {
     "transaction": {
       "type": "stockUpdate",
-      "items": {
-        "1": {
+      "items": [
+        {
+          "id": 1,
           "before": 0,
           "after": 20
         },
-        "2": {
+        { 
+          "id": 2,
           "before": 3,
           "after": 80
         }
-      }
+      ]
     }
   }
 }
@@ -624,6 +624,7 @@ A list of items sorted depending on the sort parameter.
             "price": 12.0,
           }
         ],
+        "stock": 19, 
         "timesPurchased": 3,
         "visible": true,
         "favorite": true
@@ -639,6 +640,7 @@ A list of items sorted depending on the sort parameter.
             "price": 15.0,
           }
         ],
+        "stock": 5,
         "timesPurchased": 2,
         "visible": false,
         "favorite": false
@@ -707,6 +709,7 @@ Get info about an item.
           "price": 7.0,
         }
       ],
+      "stock": 19,
       "timesPurchased": 3,
       "visible": true,
       "favorite": false
@@ -725,6 +728,9 @@ Get info about an item.
 ### PATCH /group/item/\<id\>
 
 Update an existing item.
+
+> [!TIP]
+> For updating the `stock` of an item, see [POST /group/stock](#post-groupstock).
 
 #### Body
 
