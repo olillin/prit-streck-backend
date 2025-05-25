@@ -188,6 +188,8 @@ export const itemSortModes = <const>[
     'old',
     'name_a2z',
     'name_z2a',
+    'high_stock',
+    'low_stock',
 ]
 export const getItems = () => [
     query('sort')
