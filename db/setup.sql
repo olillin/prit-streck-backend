@@ -40,10 +40,6 @@ CREATE TABLE prices
     FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE
 );
 
-CREATE TABLE transactions
-(
-);
-
 CREATE TABLE purchases
 (
     id           INT         NOT NULL DEFAULT nextval('transaction_id'),
@@ -176,17 +172,6 @@ CREATE TRIGGER set_stock_before_trigger
 EXECUTE PROCEDURE set_stock_before();
 
 -- Views
-CREATE VIEW full_item AS
-SELECT i.id,
-       i.group_id,
-       i.display_name,
-       i.icon_url,
-       i.created_time,
-       i.visible,
-       times_purchased(i.id) AS times_purchased,
-       item_stock(i.id) AS stock
-FROM items i;
-
 CREATE VIEW full_purchases AS
 SELECT p.id,
        p.group_id,
@@ -214,6 +199,31 @@ SELECT u.id,
        i.after
 FROM stock_updates u
          LEFT JOIN item_stock_updates i on u.id = i.transaction_id;
+
+CREATE VIEW transactions AS
+SELECT id,
+       group_id,
+       created_by,
+       created_time,
+       comment,
+       'purchase' AS type
+FROM purchases
+UNION ALL
+SELECT id,
+       group_id,
+       created_by,
+       created_time,
+       comment,
+       'deposit' AS type
+FROM deposits
+UNION ALL
+SELECT id,
+       group_id,
+       created_by,
+       created_time,
+       comment,
+       'stock_update' AS type
+FROM stock_updates;
 
 CREATE VIEW users_total_deposited AS
 SELECT u.id,
@@ -250,15 +260,13 @@ SELECT u.id,
 FROM user_balances u
          LEFT OUTER JOIN groups g on u.group_id = g.id;
 
-CREATE VIEW transaction_types AS
-SELECT id,
-       'purchase' AS type
-FROM purchases
-UNION ALL
-SELECT id,
-       'deposit' AS type
-FROM deposits
-UNION ALL
-SELECT id,
-       'stock_update' AS type
-FROM stock_updates;
+CREATE VIEW full_item AS
+SELECT i.id,
+       i.group_id,
+       i.display_name,
+       i.icon_url,
+       i.created_time,
+       i.visible,
+       times_purchased(i.id) AS times_purchased,
+       item_stock(i.id) AS stock
+FROM items i;

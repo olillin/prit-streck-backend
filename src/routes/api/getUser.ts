@@ -5,7 +5,7 @@ import {ApiError, sendError} from "../../errors";
 import {ResponseBody, UserResponse} from "../../types";
 import * as convert from "../../util/convert";
 import {UserId} from "gammait";
-import {getAuthorizedGroup} from "../../util/getter";
+import {getAuthorizedGroup} from "../../util/helpers";
 
 export default async function getUser(req: Request, res: Response) {
     const userId: number = getUserId(res)

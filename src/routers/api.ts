@@ -27,6 +27,7 @@ async function createApiRouter(): Promise<Router> {
         ['get', '/group/transaction/:id', 'getTransaction'],
         ['post', '/group/purchase', 'postPurchase'],
         ['post', '/group/deposit', 'postDeposit'],
+        ['post', '/group/stock', 'postStockUpdate'],
         ['get', '/group/item', 'getItems'],
         ['get', '/group/item/:id', 'getItem'],
         ['post', '/group/item', 'postItem'],

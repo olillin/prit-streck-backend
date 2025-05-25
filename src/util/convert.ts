@@ -1,19 +1,22 @@
 import {
     Deposit,
     Group,
+    Item,
+    ItemStockUpdate,
     JWT,
     LoginResponse,
     Purchase,
     PurchasedItem,
+    StockUpdate,
     Transaction,
     TransactionType,
+    User,
     UserResponse,
 } from '../types'
 import * as tableType from '../database/types'
+import {FullItemWithPrices} from '../database/types'
 import * as gamma from 'gammait'
-import { groupAvatarUrl, userAvatarUrl } from 'gammait/urls'
-import { Item, User } from '../types'
-import { FullItemWithPrices } from '../database/types'
+import {groupAvatarUrl, userAvatarUrl} from 'gammait/urls'
 
 export function splitFullItemWithPrices(
     fullItemWithPrices: tableType.FullItemWithPrices[]
@@ -29,6 +32,7 @@ export function splitFullItemWithPrices(
         icon_url: fullItemWithPrices[0].icon_url,
         created_time: fullItemWithPrices[0].created_time,
         visible: fullItemWithPrices[0].visible,
+        stock: fullItemWithPrices[0].stock,
         times_purchased: fullItemWithPrices[0].times_purchased,
     }
     const prices: tableType.Prices[] = fullItemWithPrices.map(
@@ -75,6 +79,7 @@ export function toItem(
             price: price.price,
             displayName: price.display_name,
         })),
+        stock: fullItem.stock,
         timesPurchased: fullItem.times_purchased,
         visible: fullItem.visible,
         favorite: favorite,
@@ -167,7 +172,6 @@ export function toTransaction<T extends TransactionType>(
         type,
         id: dbTransaction.id,
         createdBy: dbTransaction.created_by,
-        createdFor: dbTransaction.created_for,
         createdTime: dbTransaction.created_time.getTime(),
         ...(!!dbTransaction.comment &&
             dbTransaction.comment.length > 0 && {
@@ -177,7 +181,7 @@ export function toTransaction<T extends TransactionType>(
 }
 
 export function toPurchasedItem(
-    dbPurchasedItem: tableType.PurchasedItems | tableType.Purchases
+    dbPurchasedItem: tableType.PurchasedItems | tableType.FullPurchases
 ): PurchasedItem {
     return {
         item: {
@@ -195,9 +199,10 @@ export function toPurchasedItem(
     }
 }
 
-export function toPurchase(dbPurchase: tableType.Purchases[]): Purchase {
+export function toPurchase(dbPurchase: tableType.FullPurchases[]): Purchase {
     return {
         items: dbPurchase.map(toPurchasedItem),
+        createdFor: dbPurchase[0].created_for,
         ...toTransaction(dbPurchase[0], 'purchase'),
     }
 }
@@ -205,73 +210,22 @@ export function toPurchase(dbPurchase: tableType.Purchases[]): Purchase {
 export function toDeposit(dbDeposit: tableType.Deposits): Deposit {
     return {
         total: dbDeposit.total,
+        createdFor: dbDeposit.created_for,
         ...toTransaction(dbDeposit, 'deposit'),
     }
 }
 
-export function toTransactions(
-    dbFullTransaction: tableType.FullTransaction[]
-): Array<Deposit | Purchase> {
-    // Group rows
-    const transactionGroups = new Map<number, tableType.FullTransaction[]>()
-    for (const row of dbFullTransaction) {
-        const groupedRows = transactionGroups.get(row.id) ?? []
-        groupedRows.push(row)
-        transactionGroups.set(row.id, groupedRows)
+export function toItemStockUpdate(dbItemStockUpdate: tableType.ItemStockUpdates | tableType.FullStockUpdates): ItemStockUpdate {
+    return {
+        id: dbItemStockUpdate.item_id,
+        before: dbItemStockUpdate.before,
+        after: dbItemStockUpdate.after,
     }
-
-    // Convert to transactions
-    const transactions: Array<Deposit | Purchase> = []
-    for (const [, groupedRows] of transactionGroups) {
-        transactions.push(fromFullTransaction(groupedRows))
-    }
-
-    return transactions
 }
 
-export function fromFullTransaction(
-    dbFullTransaction: tableType.FullTransaction[]
-): Deposit | Purchase {
-    // Determine transaction type
-    const firstRow = dbFullTransaction[0]
-    const depositTotal = firstRow.total
-    const isDeposit = depositTotal !== null
-
-    const isPurchase =
-        firstRow.display_name !== null && //
-        firstRow.purchase_price !== null && //
-        firstRow.purchase_price_name !== null && //
-        firstRow.quantity !== null //
-
-    if (isDeposit) {
-        const dbDeposit: tableType.Deposits = {
-            id: firstRow.id,
-            group_id: firstRow.group_id,
-            created_by: firstRow.created_by,
-            created_for: firstRow.created_for,
-            created_time: firstRow.created_time,
-            comment: firstRow.comment,
-            total: depositTotal,
-        }
-        return toDeposit(dbDeposit)
+export function toStockUpdate(dbStockUpdate: tableType.FullStockUpdates[]): StockUpdate {
+    return {
+        items: dbStockUpdate.map(toItemStockUpdate),
+       ...toTransaction(dbStockUpdate[0], 'stockUpdate')
     }
-    if (isPurchase) {
-        const dbPurchase: tableType.Purchases[] =
-            dbFullTransaction.map<tableType.Purchases>(row => ({
-                id: row.id,
-                group_id: row.group_id,
-                created_by: row.created_by,
-                created_for: row.created_for,
-                created_time: row.created_time,
-                comment: row.comment,
-                item_id: row.item_id,
-                display_name: row.display_name!,
-                icon_url: row.icon_url,
-                purchase_price: row.purchase_price!,
-                purchase_price_name: row.purchase_price_name!,
-                quantity: row.quantity!,
-            }))
-        return toPurchase(dbPurchase)
-    }
-    throw new Error('Transaction is invalid, not deposit nor purchase')
 }
