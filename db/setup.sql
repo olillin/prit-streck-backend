@@ -42,14 +42,18 @@ CREATE TABLE transactions
     id           SERIAL      NOT NULL,
     group_id     INT         NOT NULL,
     created_by   INT         NOT NULL,
-    created_for  INT         NOT NULL,
     created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
-    FOREIGN KEY (created_for) REFERENCES users (id),
     FOREIGN KEY (group_id) REFERENCES groups (id)
 );
+
+CREATE TABLE purchases
+(
+    created_for INT           NOT NULL,
+    FOREIGN KEY (created_for) REFERENCES users (id)
+) INHERITS (transactions);
 
 CREATE TABLE purchased_items
 (
@@ -66,8 +70,22 @@ CREATE TABLE purchased_items
 
 CREATE TABLE deposits
 (
-    total NUMERIC(7, 2) NOT NULL
+    created_for INT           NOT NULL,
+    total       NUMERIC(7, 2) NOT NULL,
+    FOREIGN KEY (created_for) REFERENCES users (id)
 ) INHERITS (transactions);
+
+CREATE TABLE stock_updates() INHERITS (transactions);
+
+CREATE TABLE item_stock_updates
+(
+    transaction_id INT NOT NULL,
+    item_id        INT NOT NULL,
+    before         INT NOT NULL DEFAULT item_stock(item_id),
+    after          INT NOT NULL,
+    FOREIGN KEY (transaction_id) REFERENCES transactions (id),
+    FOREIGN KEY (item_id) REFERENCES items (id)
+);
 
 CREATE TABLE favorite_items
 (
@@ -79,10 +97,10 @@ CREATE TABLE favorite_items
 );
 
 -- Views
-CREATE VIEW purchases AS
-SELECT t.id, t.group_id, t.created_by, t.created_for, t.created_time, t.comment,
+CREATE VIEW full_purchases AS
+SELECT p.id, p.group_id, p.created_by, p.created_for, p.created_time, p.comment,
     i.item_id, i.display_name, i.icon_url, i.purchase_price, i.purchase_price_name, i.quantity
-FROM ONLY transactions t LEFT JOIN purchased_items i ON t.id = i.transaction_id;
+FROM ONLY purchases p LEFT JOIN purchased_items i ON p.id = i.transaction_id;
 
 CREATE VIEW users_total_deposited AS
 SELECT u.id, u.gamma_id, u.group_id,
@@ -112,12 +130,30 @@ SELECT u.id, u.gamma_id, u.balance, u.group_id,
        g.gamma_id AS group_gamma_id
 FROM user_balances u LEFT OUTER JOIN groups g on u.group_id = g.id;
 
+CREATE OR REPLACE FUNCTION item_stock(id INT)
+    RETURNS INT
+    LANGUAGE SQL AS
+$$
+SELECT coalesce((SELECT u.after
+                 FROM item_stock_updates u
+                 WHERE u.item_id = id
+                 ORDER BY u.transaction_id DESC
+                 LIMIT 1),
+                0);
+$$;
+
 CREATE VIEW full_item AS
-SELECT i.id, i.group_id, i.display_name, i.icon_url, i.created_time, i.visible,
-        coalesce((SELECT sum(p.quantity)
-                  FROM purchased_items p
-                  WHERE p.item_id = i.id
-                  ), 0)::INT AS times_purchased
+SELECT i.id,
+       i.group_id,
+       i.display_name,
+       i.icon_url,
+       i.created_time,
+       i.visible,
+       coalesce((SELECT sum(p.quantity)
+                 FROM purchased_items p
+                 WHERE p.item_id = i.id),
+                0)::INT AS times_purchased,
+       item_stock(i.id) AS stock
 FROM items i;
 
 CREATE VIEW full_transactions AS

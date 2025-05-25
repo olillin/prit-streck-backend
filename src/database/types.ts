@@ -24,10 +24,6 @@ export interface Items {
     visible: boolean
 }
 
-export interface FullItem extends Items {
-    times_purchased: number
-}
-
 export interface Prices {
     item_id: number
     price: number
@@ -38,9 +34,12 @@ export interface Transactions {
     id: number
     group_id: number
     created_by: UserId
-    created_for: UserId
     created_time: Date
     comment: string | null
+}
+
+export interface Purchases extends Transactions {
+    created_for: UserId
 }
 
 export interface PurchasedItems {
@@ -56,7 +55,18 @@ export interface PurchasedItems {
 }
 
 export interface Deposits extends Transactions {
+    created_for: UserId
     total: number
+}
+
+export interface StockUpdates extends Transactions {}
+
+export interface ItemStockUpdates {
+    transaction_id: number
+
+    item_id: number
+    quantity: number
+    absolute: boolean
 }
 
 export interface FavoriteItems {
@@ -65,7 +75,7 @@ export interface FavoriteItems {
 }
 
 // Views
-export interface Purchases extends Transactions {
+export interface FullPurchases extends Transactions {
     item_id: number | null
     display_name: string
     icon_url: string | null
@@ -88,6 +98,11 @@ export interface UserBalances extends Users {
 
 export interface FullUser extends UserBalances {
     group_gamma_id: GroupId
+}
+
+export interface FullItem extends Items {
+    times_purchased: number
+    stock: number
 }
 
 export interface FullItemWithPrices extends FullItem {

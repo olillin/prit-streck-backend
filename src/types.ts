@@ -40,19 +40,19 @@ export interface Price {
     displayName: string
 }
 
-export type TransactionType = 'purchase' | 'deposit'
+export type TransactionType = 'purchase' | 'deposit' | 'stockUpdate'
 export interface Transaction<T extends TransactionType> {
     type: T
     id: number
 
     createdBy: UserId
-    createdFor: UserId
     createdTime: number
 
     comment?: string
 }
 
 export interface Purchase extends Transaction<'purchase'> {
+    createdFor: UserId
     items: PurchasedItem[]
 }
 
@@ -67,7 +67,15 @@ export interface PurchasedItem {
 }
 
 export interface Deposit extends Transaction<'deposit'> {
+    createdFor: UserId
     total: number
+}
+
+export interface StockUpdate extends Transaction<'stockUpdate'> {
+    items: {
+        before: number
+        after: number
+    }
 }
 // #endregion Basic types
 
@@ -152,6 +160,18 @@ export interface PostDepositBody {
     userId: number
     total: number
     comment?: string
+}
+
+export interface PostStockUpdateBody {
+    items: ItemStockUpdates
+    comment?: string
+}
+
+export interface ItemStockUpdates {
+    [id: string]: {
+        quantity: number
+        absolute?: boolean
+    }
 }
 
 export interface PostItemBody {

@@ -642,7 +642,7 @@ class DatabaseClient extends EventEmitter {
         comment?: string | undefined | null,
     ): Promise<tableType.Transactions> {
         return (await this.queryFirstRow(
-            q.CREATE_BARE_TRANSACTION_WITH_COMMENT,
+            q.CREATE_PURCHASE_WITH_COMMENT,
             groupId,
             createdBy,
             createdFor,
