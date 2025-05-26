@@ -6,7 +6,7 @@ import {ApiError, sendError} from "../../errors";
 import * as convert from "../../util/convert";
 import {GroupResponse, ResponseBody, User} from "../../types";
 import * as tableType from "../../database/types";
-import {getAuthorizedGroup} from "../../util/getter";
+import {getAuthorizedGroup} from "../../util/helpers";
 
 export default async function getGroup(req: Request, res: Response, next: NextFunction) {
     try {

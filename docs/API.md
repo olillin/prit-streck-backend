@@ -89,6 +89,7 @@ UUID of a group in gamma.
   "icon": string?, // URL to the item icon
   "displayName": string,
   "prices": Price[],
+  "stock": int, // How many of the item is available
   "timesPurchased": int,
   "visible": boolean, // If this item is visible
   "favorite": boolean // If the logged in user has favorited this item
@@ -108,10 +109,9 @@ UUID of a group in gamma.
 
 ```javascript
 {
-  "type": "purchase" | "deposit",
+  "type": string,
   "id": int, // Numeric auto-incrementing id
   "createdBy": int, // Id of the user who created the transaction
-  "createdFor": int, // Id of the user who the transaction applies to
   "createdTime": int // Timestamp when this transaction was created in ms
   "comment": string? // Optional comment
 }
@@ -124,6 +124,7 @@ extends [Transaction](#transaction)
 ```javascript
 {
   "type": "purchase",
+  "createdFor": int, // Id of the user who the transaction applies to
   "items": PurchasedItem[]
 }
 ```
@@ -149,11 +150,37 @@ extends [Transaction](https://docs.google.com/document/d/1KiCo3THSqslC1P8mMXRVON
 ```javascript
 {
   "type": "deposit",
+  "createdFor": int, // Id of the user who the transaction applies to
   "total": decimal // Deposit amount in SEK
 }
 ```
 
-##
+### StockUpdate
+
+extends [Transaction](#transaction)
+
+```javascript
+{
+  "type": "stockUpdate", 
+  "items": [
+    {
+      "id": int,
+      "before": int,
+      "after": int
+    }
+  ]
+}
+```
+
+### ItemStockUpdate
+
+```javascript
+{
+  "id": int,       // The item id
+  "quantity": int, // How much to change the stock by
+  "absolute": bool // Set stock to 'quantity' instead of adding it. Defaults to false
+}
+```
 
 ## Authorization
 
@@ -249,8 +276,6 @@ Data about the user and their group.
   }
 }
 ```
-
-###
 
 ### GET /group
 
@@ -399,7 +424,7 @@ Get a specific transaction.
 ```javascript
 {
   "data": {
-    "transaction": Purchase | Deposit
+    "transaction": Transaction
   }
 }
 ```
@@ -444,9 +469,9 @@ The newly created transaction:
     "transaction": {
       "type": "purchase",
       "id": 7,
-      "purchaseTime": 1738594127,
-      "purchasedBy": 1,
-      "purchasedFor": 1,
+      "createdTime": 1738594127,
+      "createdBy": 1,
+      "createdFor": 1,
       "items": [
         {
           "id": 3,
@@ -515,6 +540,59 @@ The newly created transaction:
 | 400   | Total must be a number |
 | 404   | User does not exist    |
 
+### POST /group/stock
+
+Create a new [stock update](#stockupdate).
+
+#### Body
+
+| Name    | Required | Type                                  | Description         |
+|---------|----------|---------------------------------------|---------------------|
+| items   | Y        | [ItemStockUpdate](#itemstockupdate)[] |                     |
+| comment | N        | string                                | An optional comment |
+
+#### Response
+
+The newly created transaction:
+
+```javascript
+{
+  "data": {
+    "transaction": StockUpdate
+  }
+}
+```
+
+##### Example
+
+```javascript
+{
+  "data": {
+    "transaction": {
+      "type": "stockUpdate",
+      "items": [
+        {
+          "id": 1,
+          "before": 0,
+          "after": 20
+        },
+        { 
+          "id": 2,
+          "before": 3,
+          "after": 80
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Errors
+
+| Code | Error                              |
+|------|------------------------------------|
+| 404  | Item with id \<id\> does not exist |
+
 ### GET /group/item
 
 List available items for the group
@@ -546,6 +624,7 @@ A list of items sorted depending on the sort parameter.
             "price": 12.0,
           }
         ],
+        "stock": 19, 
         "timesPurchased": 3,
         "visible": true,
         "favorite": true
@@ -561,6 +640,7 @@ A list of items sorted depending on the sort parameter.
             "price": 15.0,
           }
         ],
+        "stock": 5,
         "timesPurchased": 2,
         "visible": false,
         "favorite": false
@@ -629,6 +709,7 @@ Get info about an item.
           "price": 7.0,
         }
       ],
+      "stock": 19,
       "timesPurchased": 3,
       "visible": true,
       "favorite": false
@@ -647,6 +728,9 @@ Get info about an item.
 ### PATCH /group/item/\<id\>
 
 Update an existing item.
+
+> [!TIP]
+> For updating the `stock` of an item, see [POST /group/stock](#post-groupstock).
 
 #### Body
 

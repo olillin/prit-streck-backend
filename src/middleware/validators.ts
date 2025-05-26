@@ -143,7 +143,7 @@ export const postPurchase = () => [
     body('items.*.quantity')
         .exists()
         .isInt({ min: 1 })
-        .withMessage(ApiError.ItemCount),
+        .withMessage(ApiError.PurchaseItemCount),
     body('items.*.purchasePrice').exists().isObject(),
     body('items.*.purchasePrice.price').exists().isDecimal(),
     body('items.*.purchasePrice.displayName').exists().isString().trim(),
@@ -161,6 +161,25 @@ export const postDeposit = () => [
     body('comment').optional().isString().trim().isLength({ max: 1000 }).withMessage(ApiError.InvalidComment),
 ]
 
+export const postStockUpdate = () => [
+    body('items')
+        .exists()
+        .isArray({ min: 1 })
+        .withMessage(ApiError.StockNothing),
+    body('items.*.id')
+        .exists()
+        .isInt({ min: 1 })
+        .withMessage(ApiError.InvalidItemId)
+        .bail()
+        .custom(checkItemExistsInGroup),
+    body('items.*.quantity')
+        .exists()
+        .isInt()
+        .withMessage(ApiError.StockItemCount),
+    body('items.*.absolute').optional().isBoolean(),
+    body('comment').optional().isString().trim().isLength({ max: 1000 }).withMessage(ApiError.InvalidComment),
+]
+
 export const itemSortModes = <const>[
     'popular',
     'cheap',
@@ -169,6 +188,8 @@ export const itemSortModes = <const>[
     'old',
     'name_a2z',
     'name_z2a',
+    'high_stock',
+    'low_stock',
 ]
 export const getItems = () => [
     query('sort')
