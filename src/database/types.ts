@@ -24,10 +24,6 @@ export interface Items {
     visible: boolean
 }
 
-export interface FullItem extends Items {
-    times_purchased: number
-}
-
 export interface Prices {
     item_id: number
     price: number
@@ -37,10 +33,14 @@ export interface Prices {
 export interface Transactions {
     id: number
     group_id: number
-    created_by: UserId
-    created_for: UserId
+    created_by: number
     created_time: Date
     comment: string | null
+    type: 'purchase' | 'deposit' | 'stock_update'
+}
+
+export interface Purchases extends Transactions {
+    created_for: number
 }
 
 export interface PurchasedItems {
@@ -56,7 +56,18 @@ export interface PurchasedItems {
 }
 
 export interface Deposits extends Transactions {
+    created_for: number
     total: number
+}
+
+export type StockUpdates = Transactions
+
+export interface ItemStockUpdates {
+    transaction_id: number
+
+    item_id: number
+    before: number
+    after: number
 }
 
 export interface FavoriteItems {
@@ -65,13 +76,19 @@ export interface FavoriteItems {
 }
 
 // Views
-export interface Purchases extends Transactions {
+export interface FullPurchases extends Purchases {
     item_id: number | null
     display_name: string
     icon_url: string | null
     purchase_price: number
     purchase_price_name: string
     quantity: number
+}
+
+export interface FullStockUpdates extends StockUpdates {
+    item_id: number
+    before: number
+    after: number
 }
 
 export interface UsersTotalDeposited extends Users {
@@ -90,20 +107,14 @@ export interface FullUser extends UserBalances {
     group_gamma_id: GroupId
 }
 
+export interface FullItem extends Items {
+    times_purchased: number
+    stock: number
+}
+
 export interface FullItemWithPrices extends FullItem {
     favorite: boolean
 
     price: number
     price_display_name: string
-}
-
-export interface FullTransaction extends Transactions {
-    total: number | null
-
-    item_id: number | null
-    display_name: string | null
-    icon_url: string | null
-    purchase_price: number | null
-    purchase_price_name: string | null
-    quantity: number | null
 }

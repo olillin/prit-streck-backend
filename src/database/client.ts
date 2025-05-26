@@ -2,30 +2,47 @@ import { GroupId, UserId } from 'gammait'
 import pg, { Client, ClientConfig, QueryResult, QueryResultRow } from 'pg'
 import * as q from './queries'
 import * as tableType from './types'
-import { Deposit, Item, Price, Purchase, PurchaseItem } from '../types'
+import {
+    AnyTransaction,
+    Deposit,
+    Item,
+    ItemStockUpdate,
+    Price,
+    Purchase,
+    PurchaseItem, RequestItemStockUpdate,
+    StockUpdate,
+    Transaction,
+    TransactionType
+} from '../types'
 import * as convert from '../util/convert'
 import { database } from '../config/clients'
 import { EventEmitter } from 'node:events'
+import {isValidComment} from "../util/helpers";
 
 // Parse numeric types
 pg.types.setTypeParser(pg.types.builtins.NUMERIC, parseFloat)
 
 const REQUIRED_TABLES = [
+    // Tables
     'groups',
     'users',
     'items',
     'prices',
-    'transactions',
+    'purchases',
     'purchased_items',
     'deposits',
+    'stock_updates',
+    'item_stock_updates',
     'favorite_items',
-    'purchases',
+    // Views
+    'transactions',
+    'full_purchases',
+    'full_stock_updates',
     'users_total_deposited',
     'users_total_purchased',
     'user_balances',
     'full_user',
     'full_item',
-    'full_transactions',
 ]
 
 export const legalItemColumns = [
@@ -100,7 +117,7 @@ class DatabaseClient extends EventEmitter {
                         table => !existingTables.includes(table)
                     )
                     if (missingTables.length > 0) {
-                        throw 'Database is missing tables'
+                        throw `Database is missing tables: ${missingTables.join(', ')}`
                     }
 
                     // All checks pass
@@ -635,31 +652,30 @@ class DatabaseClient extends EventEmitter {
     }
 
     // Transactions
-    async createBareTransaction(
-        groupId: number,
-        createdBy: number,
-        createdFor: number,
-        comment?: string | undefined | null,
-    ): Promise<tableType.Transactions> {
-        return (await this.queryFirstRow(
-            q.CREATE_BARE_TRANSACTION_WITH_COMMENT,
-            groupId,
-            createdBy,
-            createdFor,
-            comment ?? null,
-        ))!
-    }
-
-    // async itemExists(itemId: number): Promise<boolean> {
-    //     return await this.queryFirstBoolean(q.ITEM_EXISTS, itemId)
-    // }
-
-    async getTransaction(transactionId: number): Promise<Deposit | Purchase> {
-        const rows = await this.queryRows<tableType.FullTransaction>(
+    async getTransaction(transactionId: number): Promise<AnyTransaction> {
+        const transaction = await this.queryFirstRow<tableType.Transactions>(
             q.GET_TRANSACTION,
             transactionId
         )
-        return convert.fromFullTransaction(rows)
+        if (!transaction) {
+            throw new Error(
+                `Transaction with id ${transactionId} does not exist`
+            )
+        }
+        switch (transaction.type) {
+            case 'purchase': {
+                const purchaseRows = await this.queryRows<tableType.FullPurchases>(q.GET_FULL_PURCHASE, transactionId)
+                return convert.toPurchase(purchaseRows)
+            }
+            case 'deposit': {
+                const depositRow = (await this.queryFirstRow<tableType.Deposits>(q.GET_DEPOSIT, transactionId))!
+                return convert.toDeposit(depositRow)
+            }
+            case 'stock_update': {
+                const stockUpdateRows = await this.queryRows<tableType.FullStockUpdates>(q.GET_FULL_STOCK_UPDATE, transactionId)
+                return convert.toStockUpdate(stockUpdateRows)
+            }
+        }
     }
 
     async transactionExistsInGroup(
@@ -677,28 +693,18 @@ class DatabaseClient extends EventEmitter {
         return await this.queryFirstInt(q.COUNT_TRANSACTIONS_IN_GROUP, groupId)
     }
 
-    async getAllTransactionsInGroup(
-        groupId: number
-    ): Promise<Array<Deposit | Purchase>> {
-        const rows = await this.queryRows<tableType.FullTransaction>(
-            q.GET_ALL_TRANSACTIONS_IN_GROUP,
-            groupId
-        )
-        return convert.toTransactions(rows)
-    }
-
     async getTransactionsInGroup(
         groupId: number,
         limit: number,
         offset: number
-    ): Promise<Array<Deposit | Purchase>> {
-        const rows = await this.queryRows<tableType.FullTransaction>(
-            q.GET_TRANSACTIONS_IN_GROUP,
+    ): Promise<Array<AnyTransaction>> {
+        const rows = await this.queryRows<{id: number}>(
+            q.GET_TRANSACTION_IDS_IN_GROUP,
             groupId,
             limit,
             offset
         )
-        return convert.toTransactions(rows)
+        return await Promise.all(rows.map(({id}) => this.getTransaction(id)))
     }
 
     // Deposit
@@ -709,7 +715,7 @@ class DatabaseClient extends EventEmitter {
         comment: string | undefined | null,
         total: number,
     ): Promise<Deposit> {
-        if (comment && comment.length === 0) {
+        if (!isValidComment(comment)) {
             comment = null
         }
         const row = (await this.queryFirstRow<tableType.Deposits>(
@@ -717,7 +723,7 @@ class DatabaseClient extends EventEmitter {
             groupId,
             createdBy,
             createdFor,
-            comment ?? null,
+            comment,
             total
         ))!
         return convert.toDeposit(row)
@@ -733,19 +739,20 @@ class DatabaseClient extends EventEmitter {
     ): Promise<Purchase> {
         // Begin Postgres transaction
         await this.query('BEGIN')
-        if (comment && comment.length === 1) {
+        if (!isValidComment(comment)) {
             comment = null
         }
 
         let purchase: Purchase | undefined = undefined
         try {
             // Create transaction
-            const dbTransaction = await this.createBareTransaction(
+            const dbTransaction = (await this.queryFirstRow(
+                q.CREATE_PURCHASE_WITH_COMMENT,
                 groupId,
                 createdBy,
                 createdFor,
                 comment,
-            )
+            ))!
 
             // Add items
             await Promise.all(
@@ -786,7 +793,7 @@ class DatabaseClient extends EventEmitter {
         return purchase
     }
 
-    async addPurchasedItem(
+    private async addPurchasedItem(
         purchaseId: number,
         quantity: number,
         purchasePrice: Price,
@@ -816,6 +823,69 @@ class DatabaseClient extends EventEmitter {
                 displayName
             ))!
         }
+    }
+
+    // Stock updates
+    async createStockUpdate(groupId: number, createdBy: number, comment: string | undefined | null, items: RequestItemStockUpdate[]): Promise<StockUpdate> {
+        // Begin Postgres transaction
+        await this.query('BEGIN')
+        if (!isValidComment(comment)) {
+            comment = null
+        }
+
+        let stockUpdate: StockUpdate | undefined = undefined
+        try {
+            // Create transaction
+            const dbTransaction = (await this.queryFirstRow(
+                q.CREATE_STOCK_UPDATE_WITH_COMMENT,
+                groupId,
+                createdBy,
+                comment,
+            ))!
+
+            // Add item stock updates
+            await Promise.all(
+                items.map(async item => {
+                    let dbItem
+                    if (item.absolute === true) {
+                        dbItem = await this.getItem(item.id)
+                    } else {
+                        dbItem = await this.getFullItem(item.id)
+                    }
+                    if (!dbItem) {
+                        throw new Error(
+                            `Item with id ${item.id} does not exist`
+                        )
+                    }
+
+                    console.log(`Adding stock update for item with id ${dbItem.id}`)
+
+                    const after = item.quantity + (item.absolute === true ? 0 : (dbItem as tableType.FullItem).stock)
+
+                    await this.query(
+                        q.ADD_ITEM_STOCK_UPDATE, //
+                        dbTransaction.id,
+                        dbItem.id,
+                        after,
+                    )
+                })
+            )
+            const transaction = await this.getTransaction(dbTransaction.id)
+            console.log(transaction)
+            if (transaction.type === 'stockUpdate') {
+                console.log('Got stock update')
+                stockUpdate = transaction as StockUpdate
+            }
+        } catch (error) {
+            await this.query('ROLLBACK')
+            throw error
+        }
+
+        if (!stockUpdate) {
+            throw new Error('Failed to get stock update after creation')
+        }
+
+        return stockUpdate
     }
 
     // Favorites

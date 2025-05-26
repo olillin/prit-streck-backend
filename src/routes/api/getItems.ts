@@ -41,6 +41,12 @@ export default async function getItems(req: Request, res: Response) {
         case 'name_z2a':
             items.sort((a, b) => b.displayName.localeCompare(a.displayName))
             break
+        case 'high_stock':
+            items.sort((a, b) => b.stock - a.stock)
+            break
+        case 'low_stock':
+            items.sort((a, b) => a.stock - b.stock)
+            break
     }
     const body: ResponseBody<ItemsResponse> = {data: {items}}
     res.json(body)

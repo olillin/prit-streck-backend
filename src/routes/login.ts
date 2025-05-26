@@ -6,7 +6,7 @@ import env from '../config/env'
 import {ApiError, sendError, tokenSignError} from '../errors'
 import {JWT, LoggedInUser} from '../types'
 import * as convert from '../util/convert'
-import { getAuthorizedGroup } from '../util/getter'
+import { getAuthorizedGroup } from '../util/helpers'
 
 
 
