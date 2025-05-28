@@ -67,7 +67,7 @@ export const GET_FULL_ITEMS_WITH_PRICES_IN_GROUP = `SELECT
     i.visible,
     i.stock,
     i.times_purchased,
-    EXISTS(SELECT * FROM favorite_items WHERE item_id = $1 AND user_id = $2) AS favorite,
+    EXISTS(SELECT * FROM favorite_items WHERE item_id = i.id AND user_id = $2) AS favorite,
     p.price,
     p.display_name AS price_display_name
   FROM full_item i LEFT JOIN prices p ON p.item_id = i.id WHERE i.group_id = $1`
