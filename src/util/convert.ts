@@ -1,4 +1,4 @@
-import {
+import type {
     Deposit,
     Group,
     Item,
@@ -13,10 +13,10 @@ import {
     User,
     UserResponse,
 } from '../types'
-import * as tableType from '../database/types'
-import {FullItemWithPrices} from '../database/types'
-import * as gamma from 'gammait'
-import {groupAvatarUrl, userAvatarUrl} from 'gammait/urls'
+import type * as tableType from '../database/types'
+import type { FullItemWithPrices } from '../database/types'
+import type * as gamma from 'gammait'
+import { groupAvatarUrl, userAvatarUrl } from 'gammait/urls'
 
 export function splitFullItemWithPrices(
     fullItemWithPrices: tableType.FullItemWithPrices[]

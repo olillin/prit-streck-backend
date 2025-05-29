@@ -1,5 +1,5 @@
 import request from "supertest"
-import app from "../../src/server"
+import app from "server"
 
 describe('GET /authorize', () => {
     it('should redirect to https://auth.chalmers.it', () => {
