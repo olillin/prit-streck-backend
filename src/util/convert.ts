@@ -165,7 +165,7 @@ export function toLoginResponse(
 }
 
 export function toTransaction<T extends TransactionType>(
-    dbTransaction: tableType.Transactions,
+    dbTransaction: tableType.SharedTransactionProperties,
     type: T
 ): Transaction<T> {
     return {

@@ -30,16 +30,20 @@ export interface Prices {
     display_name: string
 }
 
-export interface Transactions {
+/** NOTE: This interface does not represent a table or view in the database*/
+export interface SharedTransactionProperties {
     id: number
     group_id: number
     created_by: number
     created_time: Date
     comment: string | null
+}
+
+export interface Transactions extends SharedTransactionProperties{
     type: 'purchase' | 'deposit' | 'stock_update'
 }
 
-export interface Purchases extends Transactions {
+export interface Purchases extends SharedTransactionProperties {
     created_for: number
 }
 
@@ -55,12 +59,12 @@ export interface PurchasedItems {
     quantity: number
 }
 
-export interface Deposits extends Transactions {
+export interface Deposits extends SharedTransactionProperties {
     created_for: number
     total: number
 }
 
-export type StockUpdates = Transactions
+export type StockUpdates = SharedTransactionProperties
 
 export interface ItemStockUpdates {
     transaction_id: number
