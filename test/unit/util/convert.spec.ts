@@ -1,48 +1,49 @@
-import type * as tableType from 'database/types'
+import * as arbitrary from '../../resources/dbArbitraries'
 import { splitFullItemWithPrices } from '../../../src/util/convert'
-
-// Example data
-const fullItem: tableType.FullItem = {
-    id: 1,
-    group_id: 2,
-    display_name: 'product name',
-    icon_url: null,
-    created_time: new Date('2025-05-29T12:00:00.000Z'),
-    visible: true,
-
-    times_purchased: 0,
-    stock: 10,
-}
-const favorite = true
-const cheapPrice: tableType.Prices = { item_id: 1, price: 20, display_name: 'cheap price' }
-const expensivePrice: tableType.Prices = { item_id: 1, price: 30, display_name: 'expensive price' }
-
-const fullItemWithPrices: tableType.FullItemWithPrices[] = [{
-    ...fullItem, favorite, price: cheapPrice.price, price_display_name: cheapPrice.display_name,
-}, {
-    ...fullItem, favorite, price: expensivePrice.price, price_display_name: expensivePrice.display_name,
-}]
+import fc from 'fast-check'
+import * as tableType from 'database/types'
 
 describe('splitFullNameWithPrices', () => {
+    const join = (item: tableType.FullItem, prices: tableType.Prices[], favorite: boolean): tableType.FullItemWithPrices[] => prices.map((price) => ({
+                ...item,
+                price: price.price,
+                price_display_name: price.display_name,
+                favorite,
+            }))
 
-    // Run function
-    const [resultFullItem, resultPrices, resultFavorite] = splitFullItemWithPrices(fullItemWithPrices)
-
-    // Assert
     it('returns an identical item', () => {
-        expect(resultFullItem).toStrictEqual(fullItem)
+        fc.assert(
+            fc.property(arbitrary.fullItemWithPricesTuple, (args) => {
+                const [resultFullItem, prices, favorite] = splitFullItemWithPrices(join(...args))
+                expect(resultFullItem).toEqual<tableType.FullItem>(args[0])
+            })
+        )
     })
 
     it('returns the correct amount of prices', () => {
-        expect(resultPrices).toHaveLength(2)
+        fc.assert(
+            fc.property(arbitrary.fullItemWithPricesTuple, (args) => {
+                const [resultFullItem, resultPrices, resultFavorite] = splitFullItemWithPrices(join(...args))
+                expect(resultPrices).toHaveLength(resultPrices.length)
+            })
+        )
     })
 
     it('returns the correct prices in the correct order', () => {
-        expect(resultPrices[0]).toStrictEqual(cheapPrice)
-        expect(resultPrices[1]).toStrictEqual(expensivePrice)
+        fc.assert(
+            fc.property(arbitrary.fullItemWithPricesTuple, (args) => {
+                const [resultFullItem, resultPrices, resultFavorite] = splitFullItemWithPrices(join(...args))
+                expect(resultPrices).toEqual<tableType.Prices[]>(resultPrices)
+            })
+        )
     })
 
-    it('is a favorite', () => {
-        expect(resultFavorite).toStrictEqual(true)
+    it('returns favorite correctly', () => {
+        fc.assert(
+            fc.property(arbitrary.fullItemWithPricesTuple, (args) => {
+                const [resultFullItem, resultPrices, resultFavorite] = splitFullItemWithPrices(join(...args))
+                expect(resultFavorite).toStrictEqual(args[2])
+            })
+        )
     })
 })
