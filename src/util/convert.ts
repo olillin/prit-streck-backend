@@ -1,36 +1,89 @@
 import {
     Deposit,
     Group,
+    Item,
+    ItemStockUpdate,
     JWT,
     LoginResponse,
     Purchase,
     PurchasedItem,
+    StockUpdate,
     Transaction,
     TransactionType,
+    User,
     UserResponse,
 } from '../types'
 import * as tableType from '../database/types'
+import {FullItemWithPrices} from '../database/types'
 import * as gamma from 'gammait'
-import { groupAvatarUrl, userAvatarUrl } from 'gammait/urls'
-import { Item, User } from '../types'
+import {groupAvatarUrl, userAvatarUrl} from 'gammait/urls'
+
+export function splitFullItemWithPrices(
+    fullItemWithPrices: tableType.FullItemWithPrices[]
+): [tableType.FullItem, tableType.Prices[], boolean] {
+    if (fullItemWithPrices.length === 0) {
+        throw new Error('Item is empty')
+    }
+
+    const item: tableType.FullItem = {
+        id: fullItemWithPrices[0].id,
+        group_id: fullItemWithPrices[0].group_id,
+        display_name: fullItemWithPrices[0].display_name,
+        icon_url: fullItemWithPrices[0].icon_url,
+        created_time: fullItemWithPrices[0].created_time,
+        visible: fullItemWithPrices[0].visible,
+        stock: fullItemWithPrices[0].stock,
+        times_purchased: fullItemWithPrices[0].times_purchased,
+    }
+    const prices: tableType.Prices[] = fullItemWithPrices.map(
+        fullItemWithPrice => ({
+            item_id: fullItemWithPrice.id,
+            price: fullItemWithPrice.price,
+            display_name: fullItemWithPrice.price_display_name,
+        })
+    )
+    const isFavorite = fullItemWithPrices[0].favorite
+
+    return [item, prices, isFavorite]
+}
 
 export function toItem(
-    item: tableType.Items,
+    item: tableType.FullItem,
     prices: tableType.Prices[],
     favorite: boolean
+): Item
+export function toItem(item: tableType.FullItemWithPrices[]): Item
+export function toItem(
+    a: tableType.FullItem | tableType.FullItemWithPrices[],
+    b?: tableType.Prices[],
+    c?: boolean
 ): Item {
+    let fullItem: tableType.FullItem
+    let prices: tableType.Prices[]
+    let favorite: boolean
+    if (b === undefined || c === undefined) {
+        ;[fullItem, prices, favorite] = splitFullItemWithPrices(
+            a as FullItemWithPrices[]
+        )
+    } else {
+        fullItem = a as tableType.FullItem
+        prices = b
+        favorite = c
+    }
+
     return {
-        id: item.id,
-        addedTime: item.addedtime.getTime(),
-        displayName: item.displayname,
+        id: fullItem.id,
+        createdTime: fullItem.created_time.getTime(),
+        displayName: fullItem.display_name,
         prices: prices.map(price => ({
             price: price.price,
-            displayName: price.displayname,
+            displayName: price.display_name,
         })),
-        timesPurchased: item.timespurchased,
-        visible: item.visible,
+        stock: fullItem.stock,
+        timesPurchased: fullItem.times_purchased,
+        visible: fullItem.visible,
         favorite: favorite,
-        ...(!!item.iconurl && { icon: item.iconurl }),
+        ...(!!fullItem.icon_url && { icon: fullItem.icon_url }),
     }
 }
 
@@ -39,50 +92,66 @@ function isUserInfo(gammaUser: GammaUser): gammaUser is gamma.UserInfo {
     return 'sub' in gammaUser
 }
 export function toUser(
-    dbUser: tableType.Users,
-    gammaUser: gamma.User | gamma.UserInfo
+    dbUser: tableType.FullUser,
+    gammaUser: gamma.User | gamma.UserInfo | null
 ): User {
-    return {
-        balance: dbUser.balance,
-        ...(isUserInfo(gammaUser)
+    const names =
+        gammaUser === null
             ? {
-                  id: gammaUser.sub,
+                  nick: 'N/A',
+                  firstName: 'N/A',
+                  lastName: 'N/A',
+              }
+            : isUserInfo(gammaUser)
+            ? {
                   nick: gammaUser.nickname,
                   firstName: gammaUser.given_name,
                   lastName: gammaUser.family_name,
-                  avatarUrl: userAvatarUrl(gammaUser.sub),
               }
             : {
-                  id: gammaUser.id,
                   nick: gammaUser.nick,
                   firstName: gammaUser.firstName,
                   lastName: gammaUser.lastName,
-                  avatarUrl: userAvatarUrl(gammaUser.id),
-              }),
+              }
+
+    return {
+        id: dbUser.id,
+        gammaId: dbUser.gamma_id,
+        balance: dbUser.balance,
+        avatarUrl: userAvatarUrl(dbUser.gamma_id),
+        ...names,
     }
 }
 
-export function toGroup(gammaGroup: gamma.Group | gamma.GroupWithPost): Group {
+export function toGroup(
+    dbGroup: tableType.Groups,
+    gammaGroup: gamma.Group | gamma.GroupWithPost
+): Group {
     return {
-        id: gammaGroup.id,
-        avatarUrl: groupAvatarUrl(gammaGroup.id),
+        id: dbGroup.id,
+        gammaId: dbGroup.gamma_id,
+        avatarUrl: groupAvatarUrl(dbGroup.gamma_id),
         prettyName: gammaGroup.prettyName,
     }
 }
 
 export function toUserResponse(
-    dbUser: tableType.Users,
+    dbUser: tableType.FullUser,
     gammaUser: GammaUser,
     gammaGroup: gamma.Group
 ): UserResponse {
+    const dbGroup: tableType.Groups = {
+        id: dbUser.group_id,
+        gamma_id: dbUser.group_gamma_id,
+    }
     return {
         user: toUser(dbUser, gammaUser),
-        group: toGroup(gammaGroup),
+        group: toGroup(dbGroup, gammaGroup),
     }
 }
 
 export function toLoginResponse(
-    dbUser: tableType.Users,
+    dbUser: tableType.FullUser,
     gammaUser: GammaUser,
     gammaGroup: gamma.Group,
     token: JWT
@@ -102,45 +171,61 @@ export function toTransaction<T extends TransactionType>(
     return {
         type,
         id: dbTransaction.id,
-        createdBy: dbTransaction.createdby,
-        createdFor: dbTransaction.createdfor,
-        createdTime: dbTransaction.createdtime.getTime(),
+        createdBy: dbTransaction.created_by,
+        createdTime: dbTransaction.created_time.getTime(),
+        ...(!!dbTransaction.comment &&
+            dbTransaction.comment.length > 0 && {
+                comment: dbTransaction.comment,
+            }),
     }
 }
 
 export function toPurchasedItem(
-    dbPurchasedItem: tableType.PurchasedItems
+    dbPurchasedItem: tableType.PurchasedItems | tableType.FullPurchases
 ): PurchasedItem {
     return {
         item: {
-            displayName: dbPurchasedItem.displayname,
-            ...(!!dbPurchasedItem.itemid && { id: dbPurchasedItem.itemid }),
-            ...(!!dbPurchasedItem.iconurl && { icon: dbPurchasedItem.iconurl }),
+            displayName: dbPurchasedItem.display_name,
+            ...(!!dbPurchasedItem.item_id && { id: dbPurchasedItem.item_id }),
+            ...(!!dbPurchasedItem.icon_url && {
+                icon: dbPurchasedItem.icon_url,
+            }),
         },
         quantity: dbPurchasedItem.quantity,
         purchasePrice: {
-            price: dbPurchasedItem.purchaseprice,
-            displayName: dbPurchasedItem.purchasepricename,
+            price: dbPurchasedItem.purchase_price,
+            displayName: dbPurchasedItem.purchase_price_name,
         },
     }
 }
 
-export function toPurchase(
-    dbTransaction: tableType.Transactions,
-    dbPurchasedItems: tableType.PurchasedItems[]
-): Purchase {
+export function toPurchase(dbPurchase: tableType.FullPurchases[]): Purchase {
     return {
-        items: dbPurchasedItems.map(toPurchasedItem),
-        ...toTransaction(dbTransaction, 'purchase'),
+        items: dbPurchase.map(toPurchasedItem),
+        createdFor: dbPurchase[0].created_for,
+        ...toTransaction(dbPurchase[0], 'purchase'),
     }
 }
 
-export function toDeposit(
-    dbTransaction: tableType.Transactions,
-    dbDeposit: tableType.Deposits
-): Deposit {
+export function toDeposit(dbDeposit: tableType.Deposits): Deposit {
     return {
         total: dbDeposit.total,
-        ...toTransaction(dbTransaction, 'deposit'),
+        createdFor: dbDeposit.created_for,
+        ...toTransaction(dbDeposit, 'deposit'),
+    }
+}
+
+export function toItemStockUpdate(dbItemStockUpdate: tableType.ItemStockUpdates | tableType.FullStockUpdates): ItemStockUpdate {
+    return {
+        id: dbItemStockUpdate.item_id,
+        before: dbItemStockUpdate.before,
+        after: dbItemStockUpdate.after,
+    }
+}
+
+export function toStockUpdate(dbStockUpdate: tableType.FullStockUpdates[]): StockUpdate {
+    return {
+        items: dbStockUpdate.map(toItemStockUpdate),
+       ...toTransaction(dbStockUpdate[0], 'stockUpdate')
     }
 }

@@ -23,18 +23,24 @@ export enum ApiError {
     GammaToken,
     InvalidGammaResponse,
     UnreachableGamma,
+    FailedGetGroups,
 
     // Login
     NoAuthorizationCode,
     AuthorizationCodeUsed,
 
     // Create purchase
-    ItemCount,
+    PurchaseItemCount,
     PurchaseNothing,
     PurchaseInvisible,
+    InvalidComment,
 
     // Create deposit
     InvalidTotal,
+
+    // Create stock update
+    StockItemCount,
+    StockNothing,
 
     // List transactions
     InvalidOffset,
@@ -72,18 +78,24 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
     [ApiError.GammaToken]: err(502, 'Failed to get token from Gamma, your authorization code may be invalid'),
     [ApiError.InvalidGammaResponse]: err(502, 'Received an invalid response from Gamma'),
     [ApiError.UnreachableGamma]: err(504, 'Unable to reach Gamma'),
+    [ApiError.FailedGetGroups]: err(502, 'Failed to get groups for user'),
 
     // Login
     [ApiError.NoAuthorizationCode]: err(401, 'No authorization code provided'),
     [ApiError.AuthorizationCodeUsed]: err(401, 'Authorization code has already been used'),
 
     // Create purchase
-    [ApiError.ItemCount]: err(400, 'Item count must be an integer greater than 0'),
+    [ApiError.PurchaseItemCount]: err(400, 'Item count must be an integer greater than 0'),
     [ApiError.PurchaseNothing]: err(400, 'Must purchase at least one item'),
     [ApiError.PurchaseInvisible]: err(403, 'Cannot purchase a non-visible item'),
+    [ApiError.InvalidComment]: err(400, 'Comment must not be longer than 1000 characters'),
 
     // Create deposit
     [ApiError.InvalidTotal]: err(400, 'Total must be a number'),
+
+    // Stock nothing
+    [ApiError.StockNothing]: err(400, 'Must update the stock of at least one item'),
+    [ApiError.StockItemCount]: err(400, 'Item quantity must be an integer'),
 
     // List purchase
     [ApiError.InvalidLimit]: err(400, 'Limit must be an integer between 1 and 100'),

@@ -27,16 +27,22 @@ However if an error occurs the request will not contain a data object and instea
 
 ### General Errors
 
-| Code | Message |
-| :---- | :---- |
-| 400 | Missing required property '\<name\>' in \<location\> |
-| 400 | Property '\<name\>' is invalid in \<location\> |
-| 400 | Invalid user ID |
-| 401 | Unauthorized |
-| 403 | User does not have permission to access this service |
-| 500 | An unexpected error occurred. Please create an issue on GitHub |
-| 502 | Received invalid response from gamma |
-| 504 | Unable to reach gamma |
+| Code | Message                                                                              |
+|------|--------------------------------------------------------------------------------------|
+| 400  | Invalid user ID                                                                      |
+| 404  | User does not exist                                                                  |
+| 400  | Invalid item ID                                                                      |
+| 404  | Item does not exist                                                                  |
+| 400  | Invalid transaction ID                                                               |
+| 404  | Transaction does not exist                                                           |
+| 400  | URL is invalid                                                                       |
+| 400  | Missing required property '\<name\>' in \<location\>                                 |
+| 400  | Property '\<name\>' is invalid in \<location\>                                       |
+| 401  | Unauthorized                                                                         |
+| 403  | User does not have permission to access this service                                 |
+| 500  | An unexpected error occurred. Please create an issue on GitHub. Details: \<details\> |
+| 502  | Received invalid response from gamma                                                 |
+| 504  | Unable to reach gamma                                                                |
 
 ## Types
 
@@ -52,7 +58,8 @@ UUID of a group in gamma.
 
 ```javascript
 {
-  "id": UserId
+  "id": int, // Numeric auto-incrementing user id
+  "gammaId": UserId, // Gamma user id
   "firstName": string
   "lastName": string
   "nick": string
@@ -66,7 +73,8 @@ UUID of a group in gamma.
 
 ```javascript
 {
-  "id": GroupId,
+  "id": int, // Numeric auto-incrementing group id
+  "gammaId": GroupId, // Gamma group id
   "prettyName": string,
   "avatarUrl": string
 }
@@ -81,6 +89,7 @@ UUID of a group in gamma.
   "icon": string?, // URL to the item icon
   "displayName": string,
   "prices": Price[],
+  "stock": int, // How many of the item is available
   "timesPurchased": int,
   "visible": boolean, // If this item is visible
   "favorite": boolean // If the logged in user has favorited this item
@@ -100,11 +109,11 @@ UUID of a group in gamma.
 
 ```javascript
 {
-  "type": "purchase" | "deposit",
+  "type": string,
   "id": int, // Numeric auto-incrementing id
-  "createdBy": UserId, // Who created the transaction
-  "createdFor": UserId, // Who does the transaction affect
+  "createdBy": int, // Id of the user who created the transaction
   "createdTime": int // Timestamp when this transaction was created in ms
+  "comment": string? // Optional comment
 }
 ```
 
@@ -115,6 +124,7 @@ extends [Transaction](#transaction)
 ```javascript
 {
   "type": "purchase",
+  "createdFor": int, // Id of the user who the transaction applies to
   "items": PurchasedItem[]
 }
 ```
@@ -140,11 +150,37 @@ extends [Transaction](https://docs.google.com/document/d/1KiCo3THSqslC1P8mMXRVON
 ```javascript
 {
   "type": "deposit",
+  "createdFor": int, // Id of the user who the transaction applies to
   "total": decimal // Deposit amount in SEK
 }
 ```
 
-##
+### StockUpdate
+
+extends [Transaction](#transaction)
+
+```javascript
+{
+  "type": "stockUpdate", 
+  "items": [
+    {
+      "id": int,
+      "before": int,
+      "after": int
+    }
+  ]
+}
+```
+
+### ItemStockUpdate
+
+```javascript
+{
+  "id": int,       // The item id
+  "quantity": int, // How much to change the stock by
+  "absolute": bool // Set stock to 'quantity' instead of adding it. Defaults to false
+}
+```
 
 ## Authorization
 
@@ -199,10 +235,11 @@ The generated JWT token and data about the authenticated user and their group.
 
 #### Errors
 
-| Code | Message |
-| :---- | :---- |
-| 404 | Unable to find user in gamma |
-| 502 | Failed to get gamma token: \<error\> |
+| Code | Message                                                                |
+|------|------------------------------------------------------------------------|
+| 404  | Unable to find user in gamma                                           |
+| 500  | Failed to sign JWT: \<details\>                                        |
+| 502  | Failed to get token from Gamma, your authorization code may be invalid |
 
 ## API Endpoints
 
@@ -223,22 +260,22 @@ Data about the user and their group.
   "data": {
     "user": {
       "balance": 0,
-      "id": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
+      "id": 1,
+      "gammaId": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
       "nick": "Cal",
       "firstName": "Oliver",
       "lastName": "Lindell",
       "avatarUrl": "https://auth.chalmers.it/images/...
     },
     "group": {
-      "id": "3cf94646-2412-4896-bba9-5d2410ac0c62",
+      "id": 1,
+      "gammaId": "3cf94646-2412-4896-bba9-5d2410ac0c62",
       "avatarUrl": "https://auth.chalmers.it/images/...,
       "prettyName": "P.R.I.T. 25"
     }
   }
 }
 ```
-
-###
 
 ### GET /group
 
@@ -263,14 +300,16 @@ The group and it's members:
 {
   "data": {
     "group": {
-      "id": "3cf94646-2412-4896-bba9-5d2410ac0c62",
+      "id": 1,
+      "gammaId": "3cf94646-2412-4896-bba9-5d2410ac0c62",
       "avatarUrl": "https://auth.chalmers.it/images/group/avatar/3cf94646-2412-4896-bba9-5d2410ac0c62",
       "prettyName": "P.R.I.T. 25"
     },
     "members": [
       {
         "balance": 0,
-        "id": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
+        "id": 1,
+        "gammaId": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
         "nick": "Cal",
         "firstName": "Oliver",
         "lastName": "Lindell",
@@ -278,7 +317,8 @@ The group and it's members:
       },
       {
         "balance": 0,
-        "id": "b69e01cd-01d1-465e-adc5-99d017b7fd74",
+        "id": 1,
+        "gammaId": "b69e01cd-01d1-465e-adc5-99d017b7fd74",
         "nick": "Göken",
         "firstName": "Erik",
         "lastName": "Persson",
@@ -295,10 +335,10 @@ List transactions in currently authenticated user's group.
 
 #### Parameters
 
-| Name | Required | Type | Description |
-| :---- | :---- | :---- | :---- |
-| limit | N | number (default: 50\) | How many purchases to list at most |
-| offset | N | number (default: 0\) | How many purchases to skip over in the start |
+| Name   | Required | Type                  | Description                                  |
+|--------|----------|-----------------------|----------------------------------------------|
+| limit  | N        | number (default: 50)  | How many purchases to list at most           |
+| offset | N        | number (default: 0)   | How many purchases to skip over in the start |
 
 #### Response
 
@@ -324,9 +364,10 @@ Unless at the end of the list a *next* url is provided to get the next page of t
     "transactions": [
       {
         "type": "purchase",
+        "id": 6,
         "purchaseTime": 1738594127,
-        "purchasedBy": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
-        "purchasedFor": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
+        "createdBy": 1,
+        "createdFor": 1,
         "items": [
           {
             "id": 954210554821,
@@ -336,9 +377,10 @@ Unless at the end of the list a *next* url is provided to get the next page of t
       },
       {
         "type": "purchase",
+        "id": 5,
         "purchaseTime": 1738594001,
-        "purchasedBy": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
-        "purchasedFor": "b69e01cd-01d1-465e-adc5-99d017b7fd74",
+        "createdBy": 1,
+        "createdFor": 2,
         "items": [
           {
             "id": 954210554821,
@@ -348,13 +390,15 @@ Unless at the end of the list a *next* url is provided to get the next page of t
             "id": 754210554621,
             "count": 1
           }
-        ]
+        ],
+        "comment": "Göken asked me to"
       },
       {
         "type": "deposit",
-        "depositTime": 1738583085,
-        "depositBy": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
-        "depositFor": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
+        "id": 4,
+        "createdTime": 1738583085,
+        "createdBy": 1,
+        "createdFor": 1,
         "total": 488.90
       }
     ],
@@ -366,10 +410,10 @@ Unless at the end of the list a *next* url is provided to get the next page of t
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 400 | Limit must be an integer between 1 and 100 |
-| 400 | Offset must be a positive integer |
+| Code   | Error                                      |
+|--------|--------------------------------------------|
+| 400    | Limit must be an integer between 1 and 100 |
+| 400    | Offset must be a positive integer          |
 
 ### GET /group/transaction/\<id\>
 
@@ -380,17 +424,17 @@ Get a specific transaction.
 ```javascript
 {
   "data": {
-    "transaction": Purchase | Deposit
+    "transaction": Transaction
   }
 }
 ```
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 400 | Invalid transaction ID |
-| 404 | Transaction does not exist |
+| Code  | Error                      |
+|-------|----------------------------|
+| 400   | Invalid transaction ID     |
+| 404   | Transaction does not exist |
 
 ### POST /group/purchase
 
@@ -398,10 +442,11 @@ Add a new purchase to a user. The user making the purchase is saved from auth.
 
 #### Body
 
-| Name | Required | Type | Description |
-| :---- | :---- | :---- | :---- |
-| userId | Y | Gamma user id | The user to add the purchase to |
-| items | Y | {   “id”: int,   “quantity”: int   “purchasePrice”: Price }\[\] | The items to purchase |
+| Name    | Required | Type                                                            | Description                     |
+|---------|----------|-----------------------------------------------------------------|---------------------------------|
+| userId  | Y        | Numeric user id                                                 | The user to add the purchase to |
+| items   | Y        | {   “id”: int,   “quantity”: int   “purchasePrice”: Price }\[\] | The items to purchase           |
+| comment | N        | string                                                          | An optional comment             |
 
 #### Response
 
@@ -423,12 +468,13 @@ The newly created transaction:
   "data": {
     "transaction": {
       "type": "purchase",
-      "purchaseTime": 1738594127,
-      "purchasedBy": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
-      "purchasedFor": "7ba99a26-9ad3-4ad8-ab7f-5891c2d82a4b",
+      "id": 7,
+      "createdTime": 1738594127,
+      "createdBy": 1,
+      "createdFor": 1,
       "items": [
         {
-          "id": 954210554821,
+          "id": 3,
           "count": 1
         }
       ]
@@ -440,22 +486,24 @@ The newly created transaction:
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 400 | Item count must be greater than 0 |
-| 400 | Must purchase at least one item |
-| 403 | Cannot purchase a non-visible item |
-| 404 | User does not exist |
-| 404 | Item does not exist |
+| Code | Error                                           |
+|------|-------------------------------------------------|
+| 400  | Item count must be greater than 0               |
+| 400  | Must purchase at least one item                 |
+| 400  | Comment must not be longer than 1000 characters |
+| 403  | Cannot purchase a non-visible item              |
+| 404  | User does not exist                             |
+| 404  | Item does not exist                             |
 
 ### POST /group/deposit
 
 #### Body
 
-| Name | Required | Type | Description |
-| :---- | :---- | :---- | :---- |
-| userId | Y | Gamma user id | The user to add the deposit to |
-| total | Y | decimal | How much to add to the user's balance in SEK |
+| Name    | Required | Type            | Description                                  |
+|---------|----------|-----------------|----------------------------------------------|
+| userId  | Y        | Numeric user id | The user to add the deposit to               |
+| total   | Y        | decimal         | How much to add to the user's balance in SEK |
+| comment | N        | string          | An optional comment                          |
 
 #### Response
 
@@ -487,9 +535,63 @@ The newly created transaction:
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 404 | User does not exist |
+| Code  | Error                  |
+|-------|------------------------|
+| 400   | Total must be a number |
+| 404   | User does not exist    |
+
+### POST /group/stock
+
+Create a new [stock update](#stockupdate).
+
+#### Body
+
+| Name    | Required | Type                                  | Description         |
+|---------|----------|---------------------------------------|---------------------|
+| items   | Y        | [ItemStockUpdate](#itemstockupdate)[] |                     |
+| comment | N        | string                                | An optional comment |
+
+#### Response
+
+The newly created transaction:
+
+```javascript
+{
+  "data": {
+    "transaction": StockUpdate
+  }
+}
+```
+
+##### Example
+
+```javascript
+{
+  "data": {
+    "transaction": {
+      "type": "stockUpdate",
+      "items": [
+        {
+          "id": 1,
+          "before": 0,
+          "after": 20
+        },
+        { 
+          "id": 2,
+          "before": 3,
+          "after": 80
+        }
+      ]
+    }
+  }
+}
+```
+
+#### Errors
+
+| Code | Error                              |
+|------|------------------------------------|
+| 404  | Item with id \<id\> does not exist |
 
 ### GET /group/item
 
@@ -497,10 +599,10 @@ List available items for the group
 
 #### Parameters
 
-| Name | Required | Type | Description |
-| :---- | :---- | :---- | :---- |
-| sort | N | *One of these strings:* popular (default) cheap expensive new old name\_a2z name\_z2a | How to sort products |
-| visibleOnly | N | bool (default: true) | Whether or not to exclude invisible products |
+| Name        | Required | Type                                                                                  | Description                                  |
+|-------------|----------|---------------------------------------------------------------------------------------|----------------------------------------------|
+| sort        | N        | *One of these strings:* popular (default) cheap expensive new old name\_a2z name\_z2a | How to sort products                         |
+| visibleOnly | N        | bool (default: true)                                                                  | Whether or not to exclude invisible products |
 
 #### Response
 
@@ -513,8 +615,8 @@ A list of items sorted depending on the sort parameter.
   "data": {
     "items": [
       {
-        "id": 954210554821,
-        "addedTime": 1738564532,
+        "id": 3,
+        "createdTime": 1738564532,
         "displayName": "Läsk",
         "prices": [
           {
@@ -522,13 +624,14 @@ A list of items sorted depending on the sort parameter.
             "price": 12.0,
           }
         ],
+        "stock": 19, 
         "timesPurchased": 3,
         "visible": true,
         "favorite": true
       },
       {
-        "id": 754210554621,
-        "addedTime": 1738584035,
+        "id": 4,
+        "createdTime": 1738584035,
         "icon": "https://example.com/product-images/cider.png",
         "displayName": "Cider",
         "prices": [
@@ -537,6 +640,7 @@ A list of items sorted depending on the sort parameter.
             "price": 15.0,
           }
         ],
+        "stock": 5,
         "timesPurchased": 2,
         "visible": false,
         "favorite": false
@@ -548,9 +652,9 @@ A list of items sorted depending on the sort parameter.
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 400 | Unknown sort order |
+| Code | Error              |
+|------|--------------------|
+| 400  | Unknown sort order |
 
 ### POST /group/item
 
@@ -558,22 +662,22 @@ Create a new item
 
 #### Body
 
-| Name | Required | Type | Description |
-| :---- | :---- | :---- | :---- |
-| displayName | Y | string | The item name to display |
-| prices | Y | [Price](#price)\[\] | Prices for the item in SEK |
-| icon | N | string | The URL of the item icon |
+| Name        | Required | Type                | Description                |
+|-------------|----------|---------------------|----------------------------|
+| displayName | Y        | string              | The item name to display   |
+| prices      | Y        | [Price](#price)\[\] | Prices for the item in SEK |
+| icon        | N        | string              | The URL of the item icon   |
 
 #### Response
 
-Responds with the created item (same response as [GET /group/item/\<id\>](#get-/group/item/id))
+Responds with the created item (same response as [GET /group/item/\<id\>](#get-groupitemid))
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 400 | An item must have at least one price |
-| 403 | Display name is not unique |
+| Code | Error                                |
+|------|--------------------------------------|
+| 400  | An item must have at least one price |
+| 403  | Display name is not unique           |
 
 ### GET /group/item/\<id\>
 
@@ -595,8 +699,8 @@ Get info about an item.
 {
   "data": {
     "item": {
-      "id": 954210554821,
-      "addedTime": 1738564532,
+      "id": 3,
+      "createdTime": 1738564532,
       "icon": "https://example.com/product-images/fanta-exotic.png",
       "displayName": "Läsk",
       "prices": [
@@ -605,6 +709,7 @@ Get info about an item.
           "price": 7.0,
         }
       ],
+      "stock": 19,
       "timesPurchased": 3,
       "visible": true,
       "favorite": false
@@ -615,24 +720,27 @@ Get info about an item.
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 400 | Invalid item ID |
-| 404 | Item does not exist |
+| Code | Error               |
+|------|---------------------|
+| 400  | Invalid item ID     |
+| 404  | Item does not exist |
 
 ### PATCH /group/item/\<id\>
 
 Update an existing item.
 
+> [!TIP]
+> For updating the `stock` of an item, see [POST /group/stock](#post-groupstock).
+
 #### Body
 
-| Name | Required | Type | Description |
-| :---- | :---- | :---- | :---- |
-| icon | N | string | The URL of the item icon |
-| displayName | N | string | The name to display next to the item |
-| prices | N | [Price](#price)\[\] | Prices for the item in SEK |
-| visible | N | bool | Whether or not to show this item |
-| favorite | N | bool | Whether or not this is a favorite item |
+| Name        | Required | Type                | Description                                                    |
+|-------------|----------|---------------------|----------------------------------------------------------------|
+| icon        | N        | string              | The URL of the item icon                                       |
+| displayName | N        | string              | The name to display next to the item                           |
+| prices      | N        | [Price](#price)\[\] | Prices for the item in SEK                                     |
+| visible     | N        | bool                | Whether or not to show this item                               |
+| favorite    | N        | bool                | Whether or not this is a favorite item for the authorized user |
 
 #### Response
 
@@ -640,10 +748,10 @@ The item after the update (same as [GET /group/item/\<id\>](https://docs.google.
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 403 | Display name is not unique |
-| 404 | Item does not exist |
+| Code  | Error                      |
+|-------|----------------------------|
+| 403   | Display name is not unique |
+| 404   | Item does not exist        |
 
 ### DELETE /group/item/\<id\>
 
@@ -651,6 +759,6 @@ Delete an item
 
 #### Errors
 
-| Code | Error |
-| :---- | :---- |
-| 404 | Item does not exist |
+| Code  | Error               |
+|-------|---------------------|
+| 404   | Item does not exist |
