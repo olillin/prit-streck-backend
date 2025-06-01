@@ -14,10 +14,10 @@ services:
         secrets:
             - db-password
         environment:
-            NODE_ENV: production
-            PGPASSWORD_FILE: /run/secrets/db-password
-            PGHOST: db
-            PGDATABASE: prit_streck
+            - NODE_ENV=production
+            - PGPASSWORD_FILE=/run/secrets/db-password
+            - PGHOST=db
+            - PGDATABASE=prit_streck
         env_file: ".env"
         restart: always
 
@@ -41,7 +41,8 @@ services:
             - db-password
         volumes:
             - db-data:/var/lib/postgresql/data
-            - ./db:/docker-entrypoint-initdb.d
+            - ./db:/docker-entrypoint-initdb.d:ro
+            - ./db/config/pg_hba.conf:/custom/pg_hba.conf:ro
         environment:
             - POSTGRES_DB=prit_streck
             - POSTGRES_PASSWORD_FILE=/run/secrets/db-password

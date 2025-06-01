@@ -71,6 +71,13 @@ docker compose up -d
 It may take a while the first time the server starts as the [images](https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-an-image)
 are created.
 
+> [!CAUTION]  
+> **Restart the container after setup.**  
+> The [pg_hba.conf](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html) file is replaced when the database is
+> initialized but is not loaded until the second time the container runs. This file controls access to the database, the
+> default configuration features a minor vulnerability because of the `trust` authentication mode that is used for local
+> connections. It is therefore recommended to restart the container after setup.
+
 ## Configuration
 
 The server can be configured using
@@ -109,7 +116,7 @@ The server uses [pg](https://www.npmjs.com/package/pg) to communicate with
 PostgreSQL. Which means that the normal PostgreSQL environment variables are
 used. They can be found at: <https://www.postgresql.org/docs/current/libpq-envars.html>.
 
-> [!NOTE]
+> [!NOTE]  
 > `PGPASSWORD` is the password used when connecting to the database while `POSTGRES_PASSWORD` is the password the
 > database is created with. Both of these are set to the file `secrets/password.txt` using the `_FILE` scheme in
 > [compose.yaml](../docker-compose.yaml).
