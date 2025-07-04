@@ -25,7 +25,7 @@ CREATE TABLE items
     display_name VARCHAR(100) NOT NULL,
     icon_url     VARCHAR(500),
     created_time TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    visible      BOOLEAN      NOT NULL DEFAULT 't',
+    flags VARBIT,
     UNIQUE (group_id, display_name),
     PRIMARY KEY (id),
     FOREIGN KEY (group_id) REFERENCES groups (id)
@@ -47,6 +47,7 @@ CREATE TABLE purchases
     created_by   INT         NOT NULL,
     created_for  INT         NOT NULL,
     created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    flags VARBIT,
     comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
@@ -75,6 +76,7 @@ CREATE TABLE deposits
     created_for  INT           NOT NULL,
     created_time TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     total        NUMERIC(7, 2) NOT NULL,
+    flags VARBIT,
     comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
@@ -88,6 +90,7 @@ CREATE TABLE stock_updates
     group_id     INT         NOT NULL,
     created_by   INT         NOT NULL,
     created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    flags VARBIT,
     comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
@@ -154,23 +157,6 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION set_stock_before()
-    RETURNS TRIGGER
-    LANGUAGE PLPGSQL AS
-$$
-BEGIN
-    NEW.before = item_stock(NEW.item_id);
-    return NEW;
-END;
-$$;
-
--- Triggers
-CREATE TRIGGER set_stock_before_trigger
-    BEFORE INSERT
-    ON item_stock_updates
-    FOR EACH ROW
-EXECUTE PROCEDURE set_stock_before();
-
 -- Views
 CREATE VIEW full_purchases AS
 SELECT p.id,
@@ -205,6 +191,7 @@ SELECT id,
        group_id,
        created_by,
        created_time,
+       flags,
        comment,
        'purchase' AS type
 FROM purchases
@@ -213,6 +200,7 @@ SELECT id,
        group_id,
        created_by,
        created_time,
+       flags,
        comment,
        'deposit' AS type
 FROM deposits
@@ -221,6 +209,7 @@ SELECT id,
        group_id,
        created_by,
        created_time,
+       flags,
        comment,
        'stock_update' AS type
 FROM stock_updates;
@@ -266,7 +255,44 @@ SELECT i.id,
        i.display_name,
        i.icon_url,
        i.created_time,
-       i.visible,
+       i.flags,
        times_purchased(i.id) AS times_purchased,
        item_stock(i.id) AS stock
 FROM items i;
+
+-- Triggers
+CREATE OR REPLACE FUNCTION set_stock_before()
+    RETURNS TRIGGER
+    LANGUAGE PLPGSQL
+AS
+$$
+BEGIN
+    NEW.before = item_stock(NEW.item_id);
+    return NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER set_stock_before_trigger
+    BEFORE INSERT
+    ON item_stock_updates
+    FOR EACH ROW
+EXECUTE PROCEDURE set_stock_before();
+
+CREATE OR REPLACE FUNCTION update_transaction_flags()
+    RETURNS TRIGGER
+    LANGUAGE PLPGSQL
+AS
+$$
+BEGIN
+    UPDATE purchases SET flags = NEW.flags WHERE id = OLD.id;
+    UPDATE deposits SET flags = NEW.flags WHERE id = OLD.id;
+    UPDATE stock_updates SET flags = NEW.flags WHERE id = OLD.id;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER update_transaction_flags_trigger
+    INSTEAD OF UPDATE
+    ON transactions
+    FOR EACH ROW
+EXECUTE PROCEDURE update_transaction_flags();

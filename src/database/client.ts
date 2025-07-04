@@ -18,6 +18,7 @@ import * as convert from '../util/convert'
 import { database } from '../config/clients'
 import { EventEmitter } from 'node:events'
 import {isValidComment} from "../util/helpers";
+import {ItemFlags, ItemFlagsMap} from "../flags";
 
 // Parse numeric types
 pg.types.setTypeParser(pg.types.builtins.NUMERIC, parseFloat)
@@ -51,7 +52,7 @@ export const legalItemColumns = [
     'display_name',
     'icon_url',
     'created_time',
-    'visible',
+    'flags',
     'favorite',
 ] as const
 export type LegalItemColumn = (typeof legalItemColumns)[number]
@@ -524,12 +525,16 @@ class DatabaseClient extends EventEmitter {
         return await this.queryRows(q.GET_ITEMS_IN_GROUP, groupId)
     }
 
+    async getItemFlags(itemId: number): Promise<number> {
+        return await this.queryFirstInt(q.GET_ITEM_FLAGS, itemId)
+    }
+
     async updateItem(
         itemId: number,
         userId: number,
         columns: LegalItemColumn[],
         values: unknown[],
-        favorite: boolean | undefined,
+        flags: Partial<ItemFlagsMap>,
         prices: Price[] | undefined
     ): Promise<Item> {
         if (columns.length !== columns.length) {
@@ -547,15 +552,23 @@ class DatabaseClient extends EventEmitter {
                 if (!legalItemColumns.includes(columns[i])) {
                     throw new Error(`Illegal column ${columns[i]}`)
                 }
-                await this.query(q.UPDATE_ITEM(columns[i]), itemId, values[i])
-            }
-            // Set favorite
-            if (favorite !== undefined) {
-                if (favorite) {
-                    await this.addFavorite(userId, itemId)
+                if (columns[i] === 'favorite') {
+                    // Set favorite
+                    const favorite = !!values[i]
+                    if (favorite) {
+                        await this.addFavorite(userId, itemId)
+                    } else {
+                        await this.removeFavorite(userId, itemId)
+                    }
                 } else {
-                    await this.removeFavorite(userId, itemId)
+                    // Update other item columns
+                    await this.query(q.UPDATE_ITEM(columns[i]), itemId, values[i])
                 }
+            }
+            // Set flags
+            console.log(flags)
+            if (flags.invisible !== undefined) {
+                await this.query(q.SET_ITEM_FLAG, itemId, ItemFlags.INVISIBLE, Number(flags.invisible))
             }
             // Set prices
             if (prices !== undefined) {
@@ -706,6 +719,11 @@ class DatabaseClient extends EventEmitter {
         )
         return await Promise.all(rows.map(({id}) => this.getTransaction(id)))
     }
+
+    async getTransactionFlags(transactionId: number): Promise<number> {
+        return await this.queryFirstInt(q.GET_TRANSACTION_FLAGS, transactionId)
+    }
+
 
     // Deposit
     async createDeposit(

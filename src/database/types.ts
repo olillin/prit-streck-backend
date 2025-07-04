@@ -21,7 +21,7 @@ export interface Items {
     display_name: string
     icon_url: string | null
     created_time: Date
-    visible: boolean
+    flags: number | null
 }
 
 export interface Prices {
@@ -31,12 +31,13 @@ export interface Prices {
 }
 
 export interface Transactions {
+    type: 'purchase' | 'deposit' | 'stock_update'
     id: number
     group_id: number
     created_by: number
     created_time: Date
+    flags: number | null
     comment: string | null
-    type: 'purchase' | 'deposit' | 'stock_update'
 }
 
 export interface Purchases extends Transactions {

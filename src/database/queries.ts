@@ -39,11 +39,13 @@ export const CREATE_BARE_ITEM_WITH_ICON = 'INSERT INTO items(group_id, display_n
 export const GET_ITEM = 'SELECT * FROM items WHERE id = $1;'
 export const GET_FULL_ITEM = 'SELECT * FROM full_item WHERE id = $1;'
 export const GET_ITEMS_IN_GROUP = 'SELECT * FROM items WHERE group_id = $1;'
+export const GET_ITEM_FLAGS = "SELECT COALESCE(flags, '0'::varbit) FROM items WHERE id = $1;"
+export const SET_ITEM_FLAG = "UPDATE items SET flags = SET_BIT(COALESCE(flags, '0'::varbit), $2, $3) WHERE id = $1;"
 export const UPDATE_ITEM = (columnName: string) => `UPDATE items SET ${columnName} = $2 WHERE id = $1 RETURNING *;`
 export const ITEM_EXISTS = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1);'
 export const ITEM_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1 AND group_id = $2);'
 export const ITEM_NAME_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE display_name = $1 AND group_id = $2);'
-export const IS_ITEM_VISIBLE = 'SELECT (visible) FROM items WHERE id = $1;'
+export const IS_ITEM_VISIBLE = 'SELECT get_bit(flags, 0) AS visible FROM items WHERE id = $1;'
 export const DELETE_ITEM = 'DELETE FROM items WHERE id = $1;'
 export const GET_FULL_ITEM_WITH_PRICES = `SELECT 
     i.id,
@@ -51,7 +53,7 @@ export const GET_FULL_ITEM_WITH_PRICES = `SELECT
     i.display_name,
     i.icon_url,
     i.created_time,
-    i.visible,
+    i.flags,
     i.stock,
     i.times_purchased,
     EXISTS(SELECT * FROM favorite_items WHERE item_id = $1 AND user_id = $2) AS favorite,
@@ -64,7 +66,7 @@ export const GET_FULL_ITEMS_WITH_PRICES_IN_GROUP = `SELECT
     i.display_name,
     i.icon_url,
     i.created_time,
-    i.visible,
+    i.flags,
     i.stock,
     i.times_purchased,
     EXISTS(SELECT * FROM favorite_items WHERE item_id = i.id AND user_id = $2) AS favorite,
@@ -107,6 +109,8 @@ export const GET_TRANSACTION_IDS_IN_GROUP = `SELECT id
         ORDER BY created_time DESC
         LIMIT $2
         OFFSET $3`
+export const GET_TRANSACTION_FLAGS = "SELECT COALESCE(flags, '0'::varbit) FROM transactions WHERE id = $1;"
+export const SET_TRANSACTION_FLAG = "UPDATE transactions SET flags = SET_BIT(COALESCE(flags, '0'::varbit), $2, $3) WHERE id = $1;"
 
 export const GET_FAVORITE_ITEM = 'SELECT * FROM favorite_items WHERE user_id = $1 AND item_id = $2;'
 export const ADD_FAVORITE_ITEM = [
