@@ -45,7 +45,7 @@ export const UPDATE_ITEM = (columnName: string) => `UPDATE items SET ${columnNam
 export const ITEM_EXISTS = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1);'
 export const ITEM_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE id = $1 AND group_id = $2);'
 export const ITEM_NAME_EXISTS_IN_GROUP = 'SELECT EXISTS(SELECT * FROM items WHERE display_name = $1 AND group_id = $2);'
-export const IS_ITEM_VISIBLE = 'SELECT get_bit(flags, 0) AS visible FROM items WHERE id = $1;'
+export const IS_ITEM_VISIBLE = "SELECT GET_BIT(COALESCE(flags, '0'::varbit), 0) = 0 AS visible FROM items WHERE id = $1;"
 export const DELETE_ITEM = 'DELETE FROM items WHERE id = $1;'
 export const GET_FULL_ITEM_WITH_PRICES = `SELECT 
     i.id,
