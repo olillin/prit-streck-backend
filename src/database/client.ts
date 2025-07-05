@@ -556,7 +556,7 @@ class DatabaseClient extends EventEmitter {
             }
             // Set flags
             if (flags.invisible !== undefined) {
-                await this.query(q.SET_ITEM_FLAG, itemId, ItemFlags.INVISIBLE, Number(flags.invisible))
+                await this.query(flags.invisible ? q.SET_ITEM_FLAG : q.CLEAR_ITEM_FLAG, itemId, ItemFlags.INVISIBLE)
             }
             // Set prices
             if (prices !== undefined) {
@@ -719,7 +719,7 @@ class DatabaseClient extends EventEmitter {
         try {
             // Set flags
             if (flags.removed !== undefined) {
-                await this.query(q.SET_TRANSACTION_FLAG, transactionId, TransactionFlags.REMOVED, Number(flags.removed))
+                await this.query(flags.removed ? q.SET_TRANSACTION_FLAG : q.CLEAR_TRANSACTION_FLAG, transactionId, TransactionFlags.REMOVED)
             }
             // Get result
             newTransaction = await this.getTransaction(transactionId)
