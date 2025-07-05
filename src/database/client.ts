@@ -1,24 +1,13 @@
-import { GroupId, UserId } from 'gammait'
-import pg, { Client, ClientConfig, QueryResult, QueryResultRow } from 'pg'
+import {GroupId, UserId} from 'gammait'
+import pg, {Client, ClientConfig, QueryResult, QueryResultRow} from 'pg'
 import * as q from './queries'
 import * as tableType from './types'
-import {
-    AnyTransaction,
-    Deposit,
-    Item,
-    ItemStockUpdate,
-    Price,
-    Purchase,
-    PurchaseItem, RequestItemStockUpdate,
-    StockUpdate,
-    Transaction,
-    TransactionType
-} from '../types'
+import {AnyTransaction, Deposit, Item, PostItemStockUpdate, Price, Purchase, PurchaseItem, StockUpdate} from '../types'
 import * as convert from '../util/convert'
-import { database } from '../config/clients'
-import { EventEmitter } from 'node:events'
+import {database} from '../config/clients'
+import {EventEmitter} from 'node:events'
 import {isValidComment} from "../util/helpers";
-import {ItemFlags, ItemFlagsMap} from "../flags";
+import {ItemFlags, ItemFlagsMap, TransactionFlags, TransactionFlagsMap} from "../flags";
 
 // Parse numeric types
 pg.types.setTypeParser(pg.types.builtins.NUMERIC, parseFloat)
@@ -566,7 +555,6 @@ class DatabaseClient extends EventEmitter {
                 }
             }
             // Set flags
-            console.log(flags)
             if (flags.invisible !== undefined) {
                 await this.query(q.SET_ITEM_FLAG, itemId, ItemFlags.INVISIBLE, Number(flags.invisible))
             }
@@ -724,6 +712,30 @@ class DatabaseClient extends EventEmitter {
         return await this.queryFirstInt(q.GET_TRANSACTION_FLAGS, transactionId)
     }
 
+    async updateTransaction(transactionId: number, flags: Partial<TransactionFlagsMap>): Promise<AnyTransaction> {
+        await this.query('BEGIN')
+
+        let newTransaction: AnyTransaction | undefined = undefined
+        try {
+            // Set flags
+            if (flags.removed !== undefined) {
+                await this.query(q.SET_TRANSACTION_FLAG, transactionId, TransactionFlags.REMOVED, Number(flags.removed))
+            }
+            // Get result
+            newTransaction = await this.getTransaction(transactionId)
+
+            await this.query('COMMIT')
+        } catch {
+            await this.query('ROLLBACK')
+            throw new Error('Failed to update transaction')
+        }
+
+        if (newTransaction === undefined) {
+            throw new Error('Failed to get transaction after update')
+        }
+
+        return newTransaction
+    }
 
     // Deposit
     async createDeposit(
@@ -844,7 +856,7 @@ class DatabaseClient extends EventEmitter {
     }
 
     // Stock updates
-    async createStockUpdate(groupId: number, createdBy: number, comment: string | undefined | null, items: RequestItemStockUpdate[]): Promise<StockUpdate> {
+    async createStockUpdate(groupId: number, createdBy: number, comment: string | undefined | null, items: PostItemStockUpdate[]): Promise<StockUpdate> {
         // Begin Postgres transaction
         await this.query('BEGIN')
         if (!isValidComment(comment)) {

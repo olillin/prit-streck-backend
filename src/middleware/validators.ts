@@ -120,6 +120,18 @@ export const getTransaction = () => [
         .custom(checkTransactionExistsInGroup),
 ]
 
+export const patchTransaction = () => [
+    param('id')
+        .exists()
+        .isInt({ min: 1 })
+        .withMessage(ApiError.InvalidTransactionId)
+        .bail()
+        .custom(checkTransactionExistsInGroup),
+    body('removed')
+        .optional()
+        .isBoolean({ strict: true })
+]
+
 export const postPurchase = () => [
     body('userId')
         .exists()
