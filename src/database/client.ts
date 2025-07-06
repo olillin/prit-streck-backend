@@ -466,13 +466,12 @@ class DatabaseClient extends EventEmitter {
         prices: Price[],
         iconUrl?: string
     ): Promise<Item> {
-        // Begin Postgres transaction
-        await this.query('BEGIN')
-
         let dbFullItem: tableType.FullItem | undefined
         let dbPrices: tableType.Prices[]
         let favorite: boolean
         try {
+            await this.query('BEGIN')
+
             // Create bare item
             const dbItem = await this.createBareItem(
                 groupId,
@@ -493,11 +492,12 @@ class DatabaseClient extends EventEmitter {
 
             // Get favorite
             favorite = await database.isFavorite(userId, dbItem.id)
+
+            await this.query('COMMIT')
         } catch (e) {
             await this.query('ROLLBACK')
             throw e
         }
-        await this.query('COMMIT')
 
         return convert.toItem(dbFullItem, dbPrices, favorite)
     }
@@ -532,10 +532,10 @@ class DatabaseClient extends EventEmitter {
             )
         }
 
-        await this.query('BEGIN')
-
         let itemRows: tableType.FullItemWithPrices[] | undefined = undefined
         try {
+            await this.query('BEGIN')
+
             // Set columns
             for (let i = 0; i < columns.length; i++) {
                 if (!legalItemColumns.includes(columns[i])) {
@@ -713,10 +713,10 @@ class DatabaseClient extends EventEmitter {
     }
 
     async updateTransaction(transactionId: number, flags: Partial<TransactionFlagsMap>): Promise<AnyTransaction> {
-        await this.query('BEGIN')
-
         let newTransaction: AnyTransaction | undefined = undefined
         try {
+            await this.query('BEGIN')
+
             // Set flags
             if (flags.removed !== undefined) {
                 await this.query(flags.removed ? q.SET_TRANSACTION_FLAG : q.CLEAR_TRANSACTION_FLAG, transactionId, TransactionFlags.REMOVED)
@@ -767,14 +767,14 @@ class DatabaseClient extends EventEmitter {
         comment: string | undefined | null,
         items: PurchaseItem[]
     ): Promise<Purchase> {
-        // Begin Postgres transaction
-        await this.query('BEGIN')
         if (!isValidComment(comment)) {
             comment = null
         }
 
         let purchase: Purchase | undefined = undefined
         try {
+            await this.query('BEGIN')
+
             // Create transaction
             const dbTransaction = (await this.queryFirstRow(
                 q.CREATE_PURCHASE_WITH_COMMENT,
@@ -806,11 +806,14 @@ class DatabaseClient extends EventEmitter {
                 })
             )
             const transaction = await this.getTransaction(dbTransaction.id)
-            console.log(transaction)
+
             if (transaction.type === 'purchase') {
-                console.log('Got purchase')
                 purchase = transaction as Purchase
+            } else {
+                throw new Error('Purchase returned wrong type after creation')
             }
+
+            await this.query('COMMIT')
         } catch (error) {
             await this.query('ROLLBACK')
             throw error
@@ -857,14 +860,14 @@ class DatabaseClient extends EventEmitter {
 
     // Stock updates
     async createStockUpdate(groupId: number, createdBy: number, comment: string | undefined | null, items: PostItemStockUpdate[]): Promise<StockUpdate> {
-        // Begin Postgres transaction
-        await this.query('BEGIN')
         if (!isValidComment(comment)) {
             comment = null
         }
 
         let stockUpdate: StockUpdate | undefined = undefined
         try {
+            await this.query('BEGIN')
+
             // Create transaction
             const dbTransaction = (await this.queryFirstRow(
                 q.CREATE_STOCK_UPDATE_WITH_COMMENT,
@@ -901,11 +904,14 @@ class DatabaseClient extends EventEmitter {
                 })
             )
             const transaction = await this.getTransaction(dbTransaction.id)
-            console.log(transaction)
+
             if (transaction.type === 'stockUpdate') {
-                console.log('Got stock update')
                 stockUpdate = transaction as StockUpdate
+            } else {
+                throw new Error('Stock update returned wrong type after creation')
             }
+
+            await this.query('COMMIT')
         } catch (error) {
             await this.query('ROLLBACK')
             throw error
