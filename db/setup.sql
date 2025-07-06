@@ -142,6 +142,7 @@ BEGIN
     INTO last_stock_time, last_stock_amount
     FROM full_stock_updates u
     WHERE u.item_id = item_stock.id
+      AND u.flags & 1 = 0
     ORDER BY u.created_time DESC;
 
     SELECT coalesce(last_stock_time, 'epoch') INTO last_stock_time;
@@ -150,6 +151,7 @@ BEGIN
     SELECT coalesce((SELECT SUM(p.quantity)
                      FROM full_purchases p
                      WHERE p.item_id = item_stock.id
+                       AND p.flags & 1 = 0
                        AND p.created_time >= last_stock_time), 0)
     INTO purchased_after_stock;
 
@@ -164,7 +166,7 @@ SELECT p.id,
        p.created_by,
        p.created_for,
        p.created_time,
-       p.flags,
+       COALESCE(p.flags, 0) AS flags,
        p.comment,
        i.item_id,
        i.display_name,
@@ -180,7 +182,7 @@ SELECT u.id,
        u.group_id,
        u.created_by,
        u.created_time,
-       u.flags,
+       COALESCE(u.flags, 0) AS flags,
        u.comment,
        i.item_id,
        i.before,
@@ -222,7 +224,8 @@ SELECT u.id,
        u.group_id,
        coalesce((SELECT sum(total)
                  FROM deposits d
-                 WHERE d.created_for = u.id), 0)::NUMERIC(7, 2) AS total
+                 WHERE d.created_for = u.id
+                   AND COALESCE(d.flags, 0) & 1 = 0), 0)::NUMERIC(7, 2) AS total
 FROM users u;
 
 CREATE VIEW users_total_purchased AS
@@ -231,7 +234,8 @@ SELECT u.id,
        u.group_id,
        coalesce((SELECT sum(p.purchase_price * p.quantity)
                  FROM full_purchases p
-                 WHERE p.created_for = u.id), 0)::NUMERIC(7, 2) AS total
+                 WHERE p.created_for = u.id
+                   AND p.flags & 1 = 0), 0)::NUMERIC(7, 2) AS total
 FROM users u;
 
 CREATE VIEW user_balances AS
