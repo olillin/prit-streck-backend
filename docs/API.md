@@ -437,6 +437,58 @@ Get a specific transaction.
 | 400   | Invalid transaction ID     |
 | 404   | Transaction does not exist |
 
+### PATCH /group/transaction/<id>
+
+Update an existing transaction.
+
+#### Body
+
+| Name    | Required | Type    | Description |
+|---------|----------|---------|-------------|
+| removed | N        | boolean | If true, the transaction will be ignored in calculations of user balances and item stocks |
+
+#### Response
+
+The transaction after the update:
+
+```javascript
+{
+  "data": {
+    "transaction": Transaction
+  }
+}
+```
+
+##### Example
+
+```javascript
+{
+  "data": {
+    "transaction": {
+      "type": "purchase",
+      "id": 7,
+      "createdTime": 1738594127,
+      "createdBy": 1,
+      "createdFor": 1,
+      "items": [
+        {
+          "id": 3,
+          "count": 1
+        }
+      ],
+      "removed": true
+    }
+  }
+}
+```
+
+#### Errors
+
+| Code  | Error                      |
+|-------|----------------------------|
+| 400   | Invalid transaction ID     |
+| 404   | Transaction does not exist |
+
 ### POST /group/purchase
 
 Add a new purchase to a user. The user making the purchase is saved from auth.
