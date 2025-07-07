@@ -3,6 +3,7 @@ import {database} from "../../config/clients";
 import {ItemSortMode, ItemsResponse, ResponseBody} from "../../types";
 import {getGroupId, getUserId} from "../../middleware/validateToken";
 import * as convert from "../../util/convert";
+import {getFlag, ItemFlags} from "../../flags";
 
 export default async function getItems(req: Request, res: Response) {
     const sort: ItemSortMode = req.query.sort as ItemSortMode
@@ -13,7 +14,7 @@ export default async function getItems(req: Request, res: Response) {
 
     const dbFullItemsWithPrices = await database.getFullItemsWithPricesInGroup(groupId, userId)
     const visibleItems = dbFullItemsWithPrices
-        .filter(dbItem => !(!dbItem.visible && visibleOnly))
+        .filter(dbItem => !(getFlag(dbItem.flags, ItemFlags.INVISIBLE) && visibleOnly))
     const groupedItems = Map.groupBy(visibleItems, (dbItem) => dbItem.id)
     const items = Array.from(groupedItems.values())
         .map(dbFullItemWithPrices => convert.toItem(dbFullItemWithPrices))

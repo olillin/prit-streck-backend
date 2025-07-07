@@ -17,6 +17,7 @@ import * as tableType from '../database/types'
 import {FullItemWithPrices} from '../database/types'
 import * as gamma from 'gammait'
 import {groupAvatarUrl, userAvatarUrl} from 'gammait/urls'
+import {getFlag, getTransactionFlags, ItemFlags} from "../flags";
 
 export function splitFullItemWithPrices(
     fullItemWithPrices: tableType.FullItemWithPrices[]
@@ -31,7 +32,7 @@ export function splitFullItemWithPrices(
         display_name: fullItemWithPrices[0].display_name,
         icon_url: fullItemWithPrices[0].icon_url,
         created_time: fullItemWithPrices[0].created_time,
-        visible: fullItemWithPrices[0].visible,
+        flags: fullItemWithPrices[0].flags,
         stock: fullItemWithPrices[0].stock,
         times_purchased: fullItemWithPrices[0].times_purchased,
     }
@@ -81,7 +82,7 @@ export function toItem(
         })),
         stock: fullItem.stock,
         timesPurchased: fullItem.times_purchased,
-        visible: fullItem.visible,
+        visible: !getFlag(fullItem.flags, ItemFlags.INVISIBLE),
         favorite: favorite,
         ...(!!fullItem.icon_url && { icon: fullItem.icon_url }),
     }
@@ -173,6 +174,7 @@ export function toTransaction<T extends TransactionType>(
         id: dbTransaction.id,
         createdBy: dbTransaction.created_by,
         createdTime: dbTransaction.created_time.getTime(),
+        ...getTransactionFlags(dbTransaction.flags),
         ...(!!dbTransaction.comment &&
             dbTransaction.comment.length > 0 && {
                 comment: dbTransaction.comment,

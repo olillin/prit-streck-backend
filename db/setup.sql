@@ -25,7 +25,7 @@ CREATE TABLE items
     display_name VARCHAR(100) NOT NULL,
     icon_url     VARCHAR(500),
     created_time TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    visible      BOOLEAN      NOT NULL DEFAULT 't',
+    flags        SMALLINT,
     UNIQUE (group_id, display_name),
     PRIMARY KEY (id),
     FOREIGN KEY (group_id) REFERENCES groups (id)
@@ -47,6 +47,7 @@ CREATE TABLE purchases
     created_by   INT         NOT NULL,
     created_for  INT         NOT NULL,
     created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    flags        SMALLINT,
     comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
@@ -75,6 +76,7 @@ CREATE TABLE deposits
     created_for  INT           NOT NULL,
     created_time TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     total        NUMERIC(7, 2) NOT NULL,
+    flags        SMALLINT,
     comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
@@ -88,6 +90,7 @@ CREATE TABLE stock_updates
     group_id     INT         NOT NULL,
     created_by   INT         NOT NULL,
     created_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    flags        SMALLINT,
     comment      VARCHAR(1000),
     PRIMARY KEY (id),
     FOREIGN KEY (created_by) REFERENCES users (id),
@@ -139,6 +142,7 @@ BEGIN
     INTO last_stock_time, last_stock_amount
     FROM full_stock_updates u
     WHERE u.item_id = item_stock.id
+      AND u.flags & 1 = 0
     ORDER BY u.created_time DESC;
 
     SELECT coalesce(last_stock_time, 'epoch') INTO last_stock_time;
@@ -147,29 +151,13 @@ BEGIN
     SELECT coalesce((SELECT SUM(p.quantity)
                      FROM full_purchases p
                      WHERE p.item_id = item_stock.id
+                       AND p.flags & 1 = 0
                        AND p.created_time >= last_stock_time), 0)
     INTO purchased_after_stock;
 
     RETURN last_stock_amount - purchased_after_stock;
 END;
 $$;
-
-CREATE OR REPLACE FUNCTION set_stock_before()
-    RETURNS TRIGGER
-    LANGUAGE PLPGSQL AS
-$$
-BEGIN
-    NEW.before = item_stock(NEW.item_id);
-    return NEW;
-END;
-$$;
-
--- Triggers
-CREATE TRIGGER set_stock_before_trigger
-    BEFORE INSERT
-    ON item_stock_updates
-    FOR EACH ROW
-EXECUTE PROCEDURE set_stock_before();
 
 -- Views
 CREATE VIEW full_purchases AS
@@ -178,6 +166,7 @@ SELECT p.id,
        p.created_by,
        p.created_for,
        p.created_time,
+       COALESCE(p.flags, 0) AS flags,
        p.comment,
        i.item_id,
        i.display_name,
@@ -193,6 +182,7 @@ SELECT u.id,
        u.group_id,
        u.created_by,
        u.created_time,
+       COALESCE(u.flags, 0) AS flags,
        u.comment,
        i.item_id,
        i.before,
@@ -205,6 +195,7 @@ SELECT id,
        group_id,
        created_by,
        created_time,
+       COALESCE(flags, 0) AS flags,
        comment,
        'purchase' AS type
 FROM purchases
@@ -213,6 +204,7 @@ SELECT id,
        group_id,
        created_by,
        created_time,
+       COALESCE(flags, 0) AS flags,
        comment,
        'deposit' AS type
 FROM deposits
@@ -221,6 +213,7 @@ SELECT id,
        group_id,
        created_by,
        created_time,
+       COALESCE(flags, 0) AS flags,
        comment,
        'stock_update' AS type
 FROM stock_updates;
@@ -231,7 +224,8 @@ SELECT u.id,
        u.group_id,
        coalesce((SELECT sum(total)
                  FROM deposits d
-                 WHERE d.created_for = u.id), 0)::NUMERIC(7, 2) AS total
+                 WHERE d.created_for = u.id
+                   AND COALESCE(d.flags, 0) & 1 = 0), 0)::NUMERIC(7, 2) AS total
 FROM users u;
 
 CREATE VIEW users_total_purchased AS
@@ -240,7 +234,8 @@ SELECT u.id,
        u.group_id,
        coalesce((SELECT sum(p.purchase_price * p.quantity)
                  FROM full_purchases p
-                 WHERE p.created_for = u.id), 0)::NUMERIC(7, 2) AS total
+                 WHERE p.created_for = u.id
+                   AND p.flags & 1 = 0), 0)::NUMERIC(7, 2) AS total
 FROM users u;
 
 CREATE VIEW user_balances AS
@@ -266,7 +261,44 @@ SELECT i.id,
        i.display_name,
        i.icon_url,
        i.created_time,
-       i.visible,
+       COALESCE(i.flags, 0) AS flags,
        times_purchased(i.id) AS times_purchased,
        item_stock(i.id) AS stock
 FROM items i;
+
+-- Triggers
+CREATE OR REPLACE FUNCTION set_stock_before()
+    RETURNS TRIGGER
+    LANGUAGE PLPGSQL
+AS
+$$
+BEGIN
+    NEW.before = item_stock(NEW.item_id);
+    return NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER set_stock_before_trigger
+    BEFORE INSERT
+    ON item_stock_updates
+    FOR EACH ROW
+EXECUTE PROCEDURE set_stock_before();
+
+CREATE OR REPLACE FUNCTION update_transaction_flags()
+    RETURNS TRIGGER
+    LANGUAGE PLPGSQL
+AS
+$$
+BEGIN
+    UPDATE purchases SET flags = NEW.flags WHERE id = OLD.id;
+    UPDATE deposits SET flags = NEW.flags WHERE id = OLD.id;
+    UPDATE stock_updates SET flags = NEW.flags WHERE id = OLD.id;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER update_transaction_flags_trigger
+    INSTEAD OF UPDATE
+    ON transactions
+    FOR EACH ROW
+EXECUTE PROCEDURE update_transaction_flags();

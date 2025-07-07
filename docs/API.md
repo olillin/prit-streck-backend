@@ -92,7 +92,7 @@ UUID of a group in gamma.
   "stock": int, // How many of the item is available
   "timesPurchased": int,
   "visible": boolean, // If this item is visible
-  "favorite": boolean // If the logged in user has favorited this item
+  "favorite": boolean, // If the logged in user has favorited this item
 }
 ```
 
@@ -112,7 +112,8 @@ UUID of a group in gamma.
   "type": string,
   "id": int, // Numeric auto-incrementing id
   "createdBy": int, // Id of the user who created the transaction
-  "createdTime": int // Timestamp when this transaction was created in ms
+  "createdTime": int, // Timestamp when this transaction was created in ms
+  "removed": boolean, // The transaction is ignored for calculations such as user balances and item stock counts and it may be presented differently on the frontend
   "comment": string? // Optional comment
 }
 ```
@@ -425,6 +426,58 @@ Get a specific transaction.
 {
   "data": {
     "transaction": Transaction
+  }
+}
+```
+
+#### Errors
+
+| Code  | Error                      |
+|-------|----------------------------|
+| 400   | Invalid transaction ID     |
+| 404   | Transaction does not exist |
+
+### PATCH /group/transaction/<id>
+
+Update an existing transaction.
+
+#### Body
+
+| Name    | Required | Type    | Description |
+|---------|----------|---------|-------------|
+| removed | N        | boolean | If true, the transaction will be ignored in calculations of user balances and item stocks |
+
+#### Response
+
+The transaction after the update:
+
+```javascript
+{
+  "data": {
+    "transaction": Transaction
+  }
+}
+```
+
+##### Example
+
+```javascript
+{
+  "data": {
+    "transaction": {
+      "type": "purchase",
+      "id": 7,
+      "createdTime": 1738594127,
+      "createdBy": 1,
+      "createdFor": 1,
+      "items": [
+        {
+          "id": 3,
+          "count": 1
+        }
+      ],
+      "removed": true
+    }
   }
 }
 ```
