@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars,@typescript-eslint/no-unused-vars */
 // noinspection JSUnusedLocalSymbols
 
-import * as arbitrary from '../../resources/dbArbitraries'
-import { splitFullItemWithPrices, toItem } from '../../../src/util/convert'
+import * as arbitrary from '../../../resources/dbArbitraries'
+import { splitFullItemWithPrices, toItem } from '../../../../src/util/convert'
 import fc from 'fast-check'
 import type * as tableType from 'database/types'
 import type { Item } from 'types'
