@@ -29,7 +29,11 @@ type Concrete<Type> = {
     [Property in keyof Type]-?: Type[Property]
 }
 
-export const DEFAULT_ENVIRONMENT: Partial<Concrete<EnvironmentVariables>> = {
+function defineDefaults<T extends Partial<EnvironmentVariables>>(env: T) {
+    return env
+}
+
+export const DEFAULT_ENVIRONMENT = defineDefaults({
     PORT: '8080',
     SUPER_GROUP_ID: PRIT_SUPER_GROUP_ID,
     EXPOSE_CORS: 'false',
@@ -42,7 +46,7 @@ export const DEFAULT_ENVIRONMENT: Partial<Concrete<EnvironmentVariables>> = {
 
     JWT_ISSUER: 'prit_streck',
     JWT_EXPIRES_IN: '43200',
-}
+} as const)
 
 export function withDefaults(
     env: EnvironmentVariables
@@ -85,14 +89,25 @@ export const requiredEnvironment: readonly (keyof EnvironmentVariables)[] = [
     'GAMMA_REDIRECT_URI',
     'JWT_SECRET',
 ]
-requiredEnvironment.forEach(required => {
-    if (!(required in process.env)) {
-        console.error(`Missing required environment variable: ${required}`)
-        process.exit()
-    }
-})
 
 const environment: Concrete<EnvironmentVariables> = withDefaults(
     resolveFileEnvironment(process.env as unknown as FileEnvironmentVariables)
 )
 export default environment
+
+/**
+ * Check if all required environment variables are present
+ * @returns `true` if this is the case, else `false`
+ */
+export function validateEnvironment(logErrors: boolean = true): boolean {
+    let valid = true
+    requiredEnvironment.forEach(required => {
+        if (!(required in environment)) {
+            if (logErrors) {
+                console.error(`Missing required environment variable: ${required}`)
+            }
+            valid = false
+        }
+    })
+    return valid
+}

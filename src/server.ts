@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from 'express'
 import rateLimit from 'express-rate-limit'
 import { authorizationCode } from './config/clients'
-import env from './config/env'
+import env, { validateEnvironment } from './config/env'
 import { sendError, unexpectedError } from './errors'
 import createApiRouter from './routers/api'
 import { login as loginRoute } from './routes/login'
@@ -10,17 +10,25 @@ import validationErrorHandler from './middleware/validationErrorHandler'
 import appendHeader from './middleware/setHeader'
 import cors, { CorsOptions } from 'cors'
 
-const exposeCors =
-    env.EXPOSE_CORS.toLowerCase() === 'true' || env.EXPOSE_CORS === '1'
-const corsOptions: CorsOptions = {
-    origin: exposeCors ? '*' : true,
-    credentials: exposeCors,
-}
-
 const app = express()
 export default app
 
 async function main() {
+    // Validate environment
+    const validEnvironment = validateEnvironment()
+    if (!validEnvironment) {
+        console.error('Environment is invalid, exiting')
+        process.exit(1)
+    }
+
+    // CORS
+    const exposeCors =
+        env.EXPOSE_CORS.toLowerCase() === 'true' || env.EXPOSE_CORS === '1'
+    const corsOptions: CorsOptions = {
+        origin: exposeCors ? '*' : true,
+        credentials: exposeCors,
+    }
+
     // Rate limit
     const limiter = rateLimit({
         windowMs: 3 * 60 * 1000, // 3 minutes
