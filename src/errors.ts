@@ -42,6 +42,9 @@ export enum ApiError {
     StockItemCount,
     StockNothing,
 
+    // Delete transaction
+    CannotDeleteTransaction,
+
     // List transactions
     InvalidOffset,
     InvalidLimit,
@@ -93,9 +96,12 @@ const errorDefinitions: { [key in ApiError]: ErrorDefinition } = {
     // Create deposit
     [ApiError.InvalidTotal]: err(400, 'Total must be a number'),
 
-    // Stock nothing
-    [ApiError.StockNothing]: err(400, 'Must update the stock of at least one item'),
+    // Create stock update
     [ApiError.StockItemCount]: err(400, 'Item quantity must be an integer'),
+    [ApiError.StockNothing]: err(400, 'Must update the stock of at least one item'),
+
+    // Delete transaction
+    [ApiError.CannotDeleteTransaction]: err(405, "Transactions cannot be deleted, please use PATCH and the 'removed' flag"),
 
     // List purchase
     [ApiError.InvalidLimit]: err(400, 'Limit must be an integer between 1 and 100'),

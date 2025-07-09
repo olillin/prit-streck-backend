@@ -1,2 +1,2 @@
-#
-db/ text eol=lf
+# Use LF for better interpretation in the container
+db/*.sh text eol=lf

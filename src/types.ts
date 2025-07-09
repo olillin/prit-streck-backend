@@ -49,6 +49,8 @@ export interface Transaction<T extends TransactionType> {
     createdBy: number
     createdTime: number
 
+    removed: boolean
+
     comment?: string
 }
 export type AnyTransaction = Purchase | Deposit | StockUpdate
@@ -168,14 +170,18 @@ export interface PostDepositBody {
 }
 
 export interface PostStockUpdateBody {
-    items: RequestItemStockUpdate[]
+    items: PostItemStockUpdate[]
     comment?: string
 }
 
-export interface RequestItemStockUpdate {
+export interface PostItemStockUpdate {
     id: number
     quantity: number
     absolute?: boolean
+}
+
+export interface PatchTransactionBody {
+    removed?: boolean
 }
 
 export interface PostItemBody {

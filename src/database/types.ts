@@ -21,7 +21,7 @@ export interface Items {
     display_name: string
     icon_url: string | null
     created_time: Date
-    visible: boolean
+    flags: number | null
 }
 
 export interface Prices {
@@ -30,12 +30,13 @@ export interface Prices {
     display_name: string
 }
 
-/** NOTE: This interface does not represent a table or view in the database*/
+/** NOTE: This interface does not represent a table or view in the database */
 export interface SharedTransactionProperties {
     id: number
     group_id: number
     created_by: number
     created_time: Date
+    flags: number | null
     comment: string | null
 }
 
