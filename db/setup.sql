@@ -219,7 +219,7 @@ SELECT id,
 FROM stock_updates;
 
 CREATE VIEW users_total_deposited AS
-SELECT u.id,
+SELECT u.id as user_id,
        u.gamma_id,
        u.group_id,
        coalesce((SELECT sum(total)
@@ -229,7 +229,7 @@ SELECT u.id,
 FROM users u;
 
 CREATE VIEW users_total_purchased AS
-SELECT u.id,
+SELECT u.id as user_id,
        u.gamma_id,
        u.group_id,
        coalesce((SELECT sum(p.purchase_price * p.quantity)
@@ -239,15 +239,15 @@ SELECT u.id,
 FROM users u;
 
 CREATE VIEW user_balances AS
-SELECT u.id,
+SELECT u.id as user_id,
        u.gamma_id,
        u.group_id,
-       (SELECT (d.total) FROM users_total_deposited d WHERE d.id = u.id)
-           - (SELECT (p.total) FROM users_total_purchased p WHERE p.id = u.id) AS balance
+       (SELECT (d.total) FROM users_total_deposited d WHERE d.user_id = u.id)
+           - (SELECT (p.total) FROM users_total_purchased p WHERE p.user_id = u.id) AS balance
 FROM users u;
 
 CREATE VIEW full_user AS
-SELECT u.id,
+SELECT u.user_id as id,
        u.gamma_id,
        u.balance,
        u.group_id,
